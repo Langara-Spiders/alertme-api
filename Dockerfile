@@ -10,7 +10,10 @@ WORKDIR /app
 EXPOSE 8000
 
 ARG DEV=false
-RUN python -m venv /py && \
+RUN \
+    apk add postgresql-libs && \
+    apk add --virtual .build-deps gcc musl-dev postgresql-dev && \
+    python -m venv /py && \
     /py/bin/pip install --upgrade pip && \
     /py/bin/pip install -r /tmp/requirements.txt && \
     if [ $DEV = "true" ]; \
