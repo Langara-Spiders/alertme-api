@@ -1,6 +1,8 @@
-name: alertme api ci workflow
 env:
   GIT_SHA: ${{ steps.vars.outputs.GIT_SHA }}
+
+name: alertme api ci workflow
+
 
   
 on:
