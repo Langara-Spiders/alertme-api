@@ -40,9 +40,10 @@ jobs:
     needs: pre-run
     steps:
     
-    - name: Build and tag Docker image
+    - name: Build the docker image
       env:
         DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}
+        GIT_SHA: ${{ env.GIT_SHA }}
       run: |
         TAG=${{ env.GIT_SHA }}
         echo "TAG: $TAG"
