@@ -2,9 +2,9 @@ name: alertme-api update docker image
 
 on:
   push:
-    branches: [ "dev" ]
+    branches: [ "Initiate-code-for-backend-and-run-it-through-docker" ]
   pull_request:
-    branches: [ "dev" ]
+    branches: [ "Initiate-code-for-backend-and-run-it-through-docker" ]
 
 jobs:
 
@@ -67,13 +67,18 @@ jobs:
       env:
         GIT_SHA: ${{ env.GIT_SHA }}
 
-    - name: Push Docker images
+    - name: Check push_image secret and Push Docker images
       if: success()
       run: |
-        TAG=${{ env.GIT_SHA }}  
-        echo "$DOCKER_USERNAME"
-        docker push $DOCKER_USERNAME/alertme-api:$TAG
-        docker push $DOCKER_USERNAME/alertme-api:latest
+        echo "push_image=${{ secrets.PUSH_IMAGE }}" >> $GITHUB_ENV
+        if [ "${{ secrets.PUSH_IMAGE }}" == 'true' ]; then
+          TAG=${{ env.GIT_SHA }}
+          echo "$DOCKER_USERNAME"
+          docker push $DOCKER_USERNAME/alertme-api:$TAG
+          docker push $DOCKER_USERNAME/alertme-api:latest
+        else
+          echo "Pushing Docker image option set to false"
+        fi
       env:
         TAG: ${{ env.GIT_SHA }}
-        DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}        
+        DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}     
