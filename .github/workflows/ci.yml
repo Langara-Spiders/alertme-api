@@ -32,6 +32,11 @@ jobs:
       id: vars
       run: echo "GIT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
 
+    - name: Create .env file
+      run: |
+        touch .env
+        echo '${{ toJSON(secrets) }}' | jq -r 'keys[] as $k | "\($k)=\(.[$k])"' >> .env
+
     - name: Build and tag Docker image
       run: |
         TAG=${{ env.GIT_SHA }}
@@ -40,11 +45,6 @@ jobs:
         IMAGE_ID=$(docker images $USERNAME/alertme-api --format "{{.ID}}" | head -n 1)
         docker tag $IMAGE_ID $USERNAME/alertme-api:$TAG
         docker tag $IMAGE_ID $USERNAME/alertme-api:latest
-
-    - name: Create .env file
-      run: |
-        touch .env
-        echo '${{ toJSON(secrets) }}' | jq -r 'keys[] as $k | "\($k)=\(.[$k])"' >> .env
 
     - name: Start the container
       run: docker-compose up -d app
