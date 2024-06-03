@@ -1,0 +1,68 @@
+name: alertme api update docker image
+
+on:
+  push:
+    branches: [ "dev" ]
+  pull_request:
+    branches: [ "dev" ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Login Dockerhub
+      env:
+        DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}
+        DOCKER_PASSWORD: ${{secrets.DOCKERHUB_TOKEN}}
+      run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+
+    - name: Set up Docker Compose
+      run: sudo apt-get update && sudo apt-get install -y docker-compose jq
+
+    - name: Extract Git commit SHA
+      id: vars
+      run: echo "GIT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+    - name: Create .env file
+      run: |
+        touch .env
+        echo '${{ toJSON(secrets) }}' | jq -r 'keys[] as $k | "\($k)=\(.[$k])"' >> .env
+
+    - name: Build and tag Docker image
+      env:
+        DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}
+      run: |
+        TAG=${{ env.GIT_SHA }}
+        echo "TAG: $TAG"
+        echo $DOCKER_USERNAME
+        docker-compose build app
+        IMAGE_ID=$(docker images | grep alertme-api | head -n 1 | awk '{print $3}')
+        echo "IMAGE_ID: $IMAGE_ID"
+        docker tag $IMAGE_ID $DOCKER_USERNAME/alertme-api:$TAG
+        docker tag $IMAGE_ID $DOCKER_USERNAME/alertme-api:latest
+
+    - name: Start the container
+      run: docker-compose up -d app
+
+    - name: Run tests in Docker container
+      run: |
+        TAG=${{ env.GIT_SHA }}
+        docker-compose exec -T app python manage.py test
+      env:
+        GIT_SHA: ${{ env.GIT_SHA }}
+
+    - name: Lint
+      run: |
+        TAG=${{ env.GIT_SHA }}
+        docker-compose exec -T app flake8
+      env:
+        GIT_SHA: ${{ env.GIT_SHA }}     
