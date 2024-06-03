@@ -43,8 +43,9 @@ jobs:
     - name: Build the docker image
       env:
         DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}
+        GIT_SHA: ${{ steps.vars.outputs.GIT_SHA }}
       run: |
-        TAG=${{ needs.pre-run.outputs.git_sha }}
+        TAG=${{ env.GIT_SHA }}
         echo "TAG: $TAG"
         echo $DOCKER_USERNAME
         docker-compose build app
