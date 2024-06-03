@@ -13,6 +13,15 @@ jobs:
     runs-on: self-hosted
 
     steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Login Dockerhub
+      env:
+        DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}
+        DOCKER_PASSWORD: ${{secrets.DOCKERHUB_TOKEN}}
+      run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+      
     - name: Pull Docker image
       run: docker pull langaraspiders/alertme-api:latest
 
