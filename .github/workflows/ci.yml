@@ -63,7 +63,7 @@ jobs:
         TAG=${{ env.GIT_SHA }}
         USERNAME=${{ secrets.DOCKERHUB_USER }}
         
-        docker push $USERNAME/alertme-api:$TAG
-        docker push $USERNAME/alertme-api:latest
+        docker push alertme-api:$TAG
+        docker push alertme-api:latest
       env:
         TAG: ${{ env.GIT_SHA }}
