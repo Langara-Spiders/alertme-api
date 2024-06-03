@@ -1,6 +1,3 @@
-env:
-  GIT_SHA: ${{ steps.vars.outputs.GIT_SHA }}
-
 name: alertme api ci workflow
 
 
@@ -48,6 +45,7 @@ jobs:
     - name: Build the docker image
       env:
         DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}
+        GIT_SHA: ${{ needs.pre-run.outputs.vars.GIT_SHA }}
       run: |
         TAG=${{ env.GIT_SHA }}
         echo "TAG: $TAG"
