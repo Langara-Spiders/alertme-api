@@ -2,9 +2,9 @@ name: alertme-api update docker image
 
 on:
   push:
-    branches: [ "Initiate-code-for-backend-and-run-it-through-docker" ]
+    branches: [ "dev" ]
   pull_request:
-    branches: [ "Initiate-code-for-backend-and-run-it-through-docker" ]
+    branches: [ "dev" ]
 
 jobs:
 
