@@ -67,7 +67,7 @@ jobs:
       env:
         GIT_SHA: ${{ env.GIT_SHA }}
 
-    - name: Check push_image secret and Push Docker images
+    - name: Push Docker image if enabled
       if: success()
       run: |
         echo "push_image=${{ secrets.PUSH_IMAGE }}" >> $GITHUB_ENV
