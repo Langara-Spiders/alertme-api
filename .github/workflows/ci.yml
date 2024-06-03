@@ -38,8 +38,7 @@ jobs:
         echo '${{ toJSON(secrets) }}' | jq -r 'keys[] as $k | "\($k)=\(.[$k])"' >> .env
 
     - name: Build and tag Docker image
-      env:
-        DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}
+      
       run: |
         TAG=${{ env.GIT_SHA }}
         echo "TAG: $TAG"
