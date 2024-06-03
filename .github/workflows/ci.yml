@@ -8,10 +8,8 @@ on:
 
 jobs:
 
-  build:
-
+  pre-run:
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -36,7 +34,12 @@ jobs:
       run: |
         touch .env
         echo '${{ toJSON(secrets) }}' | jq -r 'keys[] as $k | "\($k)=\(.[$k])"' >> .env
-
+  
+  build:
+    runs-on: ubuntu-latest
+    needs: pre-run
+    steps:
+    
     - name: Build and tag Docker image
       env:
         DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}
@@ -49,10 +52,18 @@ jobs:
         echo "IMAGE_ID: $IMAGE_ID"
         docker tag $IMAGE_ID $DOCKER_USERNAME/alertme-api:$TAG
         docker tag $IMAGE_ID $DOCKER_USERNAME/alertme-api:latest
-
+  
+  start:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
     - name: Start the container
       run: docker-compose up -d app
 
+  test:
+    runs-on: ubuntu-latest
+    needs: start
+    steps:
     - name: Run tests in Docker container
       run: |
         TAG=${{ env.GIT_SHA }}
@@ -60,6 +71,10 @@ jobs:
       env:
         GIT_SHA: ${{ env.GIT_SHA }}
 
+  upload-image:
+    runs-on: ubuntu-latest
+    needs: start
+    steps:
     - name: Push Docker images
       if: success()
       run: |
