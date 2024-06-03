@@ -2,9 +2,9 @@ name: alertme api ci workflow
 
 on:
   push:
-    branches: [ "dev" ]
+    branches: [ "Initiate-code-for-backend-and-run-it-through-docker" ]
   pull_request:
-    branches: [ "dev" ]
+    branches: [ "Initiate-code-for-backend-and-run-it-through-docker" ]
 
 jobs:
 
