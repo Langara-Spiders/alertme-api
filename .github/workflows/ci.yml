@@ -44,12 +44,12 @@ jobs:
         echo "TAG: $TAG"
         echo "USERNAME: $USERNAME"
         docker-compose build app
-        IMAGE_ID=$(docker images | grep $USERNAME/alertme-api | head -n 1 | awk '{print $3}')
+        IMAGE_ID=$(docker images | grep alertme-api | head -n 1 | awk '{print $3}')
         docker images
-        docker images | grep $USERNAME/alertme-api | head -n 1 | awk '{print $3}'
+        docker images | grep alertme-api | head -n 1 | awk '{print $3}'
         echo "IMAGE_ID: $IMAGE_ID"
-        docker tag $IMAGE_ID $USERNAME/alertme-api:$TAG
-        docker tag $IMAGE_ID $USERNAME/alertme-api:latest
+        docker tag $IMAGE_ID alertme-api:$TAG
+        docker tag $IMAGE_ID alertme-api:latest
 
     - name: Start the container
       run: docker-compose up -d app
