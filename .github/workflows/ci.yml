@@ -45,6 +45,7 @@ jobs:
         echo "USERNAME: $USERNAME"
         docker-compose build app
         IMAGE_ID=$(docker images $USERNAME/alertme-api --format "{{.ID}}" | head -n 1)
+        docker images
         echo "IMAGE_ID: $IMAGE_ID"
         docker tag $IMAGE_ID $USERNAME/alertme-api:$TAG
         docker tag $IMAGE_ID $USERNAME/alertme-api:latest
