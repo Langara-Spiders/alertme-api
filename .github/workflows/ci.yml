@@ -63,7 +63,7 @@ jobs:
     - name: Lint
       run: |
         TAG=${{ env.GIT_SHA }}
-        docker-compose exec -T app python manage.py lint
+        docker-compose exec -T app flake8
       env:
         GIT_SHA: ${{ env.GIT_SHA }}
 
