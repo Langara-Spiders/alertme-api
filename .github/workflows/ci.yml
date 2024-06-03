@@ -60,7 +60,8 @@ jobs:
     - name: Push Docker images
       if: success()
       run: |
-        TAG=${{ env.GIT_SHA }}        
+        TAG=${{ env.GIT_SHA }}  
+        echo "$DOCKER_USERNAME"
         docker push $DOCKER_USERNAME/alertme-api:$TAG
         docker push $DOCKER_USERNAME/alertme-api:latest
       env:
