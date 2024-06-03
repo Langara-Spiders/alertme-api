@@ -63,4 +63,20 @@ jobs:
         TAG=${{ env.GIT_SHA }}
         docker-compose exec -T app flake8
       env:
-        GIT_SHA: ${{ env.GIT_SHA }}     
+        GIT_SHA: ${{ env.GIT_SHA }} 
+
+    - name: Push Docker image if enabled
+      if: success()
+      run: |
+        echo "push_image=${{ secrets.PUSH_IMAGE }}" >> $GITHUB_ENV
+        if [ "${{ secrets.PUSH_IMAGE }}" == 'true' ]; then
+          TAG=${{ env.GIT_SHA }}
+          echo "$DOCKER_USERNAME"
+          docker push $DOCKER_USERNAME/alertme-api:$TAG
+          docker push $DOCKER_USERNAME/alertme-api:latest
+        else
+          echo "Pushing Docker image option set to false"
+        fi
+      env:
+        TAG: ${{ env.GIT_SHA }}
+        DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}} 
