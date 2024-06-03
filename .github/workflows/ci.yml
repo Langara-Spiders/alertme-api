@@ -49,9 +49,6 @@ jobs:
         docker tag $IMAGE_ID $USERNAME/alertme-api:$TAG
         docker tag $IMAGE_ID $USERNAME/alertme-api:latest
 
-
-
-
     - name: Start the container
       run: docker-compose up -d app
 
