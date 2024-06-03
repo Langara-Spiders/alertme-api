@@ -13,3 +13,6 @@ jobs:
     steps:
     - name: Pull Docker image
       run: docker pull langaraspiders/alertme-api:latest
+
+    - name: just say hi
+      run: echo "Hi"
