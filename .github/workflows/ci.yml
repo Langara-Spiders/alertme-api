@@ -38,7 +38,8 @@ jobs:
         echo '${{ toJSON(secrets) }}' | jq -r 'keys[] as $k | "\($k)=\(.[$k])"' >> .env
 
     - name: Build and tag Docker image
-      
+      env:
+        DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}
       run: |
         TAG=${{ env.GIT_SHA }}
         echo "TAG: $TAG"
@@ -68,3 +69,4 @@ jobs:
         docker push $DOCKER_USERNAME/alertme-api:latest
       env:
         TAG: ${{ env.GIT_SHA }}
+        DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}        
