@@ -1,5 +1,8 @@
 name: alertme api ci workflow
+env:
+  GIT_SHA: ${{ steps.vars.outputs.GIT_SHA }}
 
+  
 on:
   push:
     branches: [ "Initiate-code-for-backend-and-run-it-through-docker" ]
@@ -43,7 +46,6 @@ jobs:
     - name: Build the docker image
       env:
         DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}
-        GIT_SHA: ${{ steps.vars.outputs.GIT_SHA }}
       run: |
         TAG=${{ env.GIT_SHA }}
         echo "TAG: $TAG"
