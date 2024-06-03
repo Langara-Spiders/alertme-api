@@ -6,6 +6,7 @@ services:
       context: .
       args:
         - DEV=true
+    image: langaraspiders/alertme-api
     ports:
       - "8000:8000"
     volumes:
