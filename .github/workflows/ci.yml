@@ -40,13 +40,9 @@ jobs:
     - name: Build and tag Docker image
       run: |
         TAG=${{ env.GIT_SHA }}
-        USERNAME=${{ secrets.DOCKER_USERNAME }}
         echo "TAG: $TAG"
-        echo "USERNAME: $USERNAME"
         docker-compose build app
         IMAGE_ID=$(docker images | grep alertme-api | head -n 1 | awk '{print $3}')
-        docker images
-        docker images | grep alertme-api | head -n 1 | awk '{print $3}'
         echo "IMAGE_ID: $IMAGE_ID"
         docker tag $IMAGE_ID alertme-api:$TAG
         docker tag $IMAGE_ID alertme-api:latest
@@ -65,7 +61,8 @@ jobs:
       if: success()
       run: |
         TAG=${{ env.GIT_SHA }}
-        USERNAME=${{ secrets.DOCKER_USERNAME }}
+        USERNAME=${{ secrets.DOCKERHUB_USER }}
+        
         docker push $USERNAME/alertme-api:$TAG
         docker push $USERNAME/alertme-api:latest
       env:
