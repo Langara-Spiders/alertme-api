@@ -43,10 +43,8 @@ jobs:
       run: |
         TAG=${{ env.GIT_SHA }}
         echo "TAG: $TAG"
-        echo $DOCKER_USERNAME
         docker-compose build app
         IMAGE_ID=$(docker images | grep alertme-api | head -n 1 | awk '{print $3}')
-        echo "IMAGE_ID: $IMAGE_ID"
         docker tag $IMAGE_ID $DOCKER_USERNAME/alertme-api:$TAG
         docker tag $IMAGE_ID $DOCKER_USERNAME/alertme-api:latest
 
