@@ -38,11 +38,11 @@ jobs:
         echo '${{ toJSON(secrets) }}' | jq -r 'keys[] as $k | "\($k)=\(.[$k])"' >> .env
 
     - name: Build and tag Docker image
+      env:
+        DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}
       run: |
         TAG=${{ env.GIT_SHA }}
         echo "TAG: $TAG"
-        env:
-        DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}
         echo $DOCKER_USERNAME
         docker-compose build app
         IMAGE_ID=$(docker images | grep alertme-api | head -n 1 | awk '{print $3}')
