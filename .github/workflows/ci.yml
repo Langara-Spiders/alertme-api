@@ -42,7 +42,7 @@ jobs:
         TAG=${{ env.GIT_SHA }}
         echo "TAG: $TAG"
         docker-compose build app
-        echo "$DOCKER_USERNAME"
+        DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}
         echo $DOCKER_USERNAME
         IMAGE_ID=$(docker images | grep alertme-api | head -n 1 | awk '{print $3}')
         echo "IMAGE_ID: $IMAGE_ID"
