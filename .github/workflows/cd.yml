@@ -1,0 +1,15 @@
+name: alertme-api cd
+
+on:
+  workflow_run:
+    workflows: ["alertme-api ci"]
+    types:
+      - completed
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+    - name: Pull Docker image
+      run: docker pull langaraspiders/alertme-api:latest
