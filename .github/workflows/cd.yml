@@ -1,6 +1,10 @@
 name: alertme-api cd
 
 on:
+  push:
+    branches: [ "Initiate-code-for-backend-and-run-it-through-docker" ]
+    
+on:
   workflow_run:
     workflows: ["alertme-api ci"]
     types:
