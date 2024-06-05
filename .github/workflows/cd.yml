@@ -26,4 +26,4 @@ jobs:
       run: docker pull langaraspiders/alertme-api:latest
 
     - name: just say hi
-      run: echo "Hi"
+      run: echo "Hi Hello"
