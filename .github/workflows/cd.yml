@@ -25,5 +25,11 @@ jobs:
     - name: Pull Docker image
       run: docker pull langaraspiders/alertme-api:latest
 
-    - name: just say hi
-      run: echo "Hi Hello"
+    - name: Run Docker container and execute commands
+      run: |
+        docker run -d --name alertme-api-container -p 8000:8000 langaraspiders/alertme-api:latest sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+
+    - name: Show message on successful deployment
+      if: success()
+      run: echo "Success"
+     
