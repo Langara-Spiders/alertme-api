@@ -29,6 +29,12 @@ jobs:
       run: |
         docker run -d --name alertme-api-container -p 8000:8000 langaraspiders/alertme-api:latest sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
 
+    - name: Wait for a few seconds to let the container start
+      run: sleep 10
+
+    - name: Print container logs for debugging
+      run: docker logs alertme-api-container
+      
     - name: Show message on successful deployment
       if: success()
       run: echo "Success"
