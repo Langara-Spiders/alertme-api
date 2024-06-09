@@ -29,6 +29,11 @@ jobs:
       run: |
         echo '${{ toJSON(secrets) }}' | jq -r 'keys[] as $k | "\($k)=\(.[$k])"' > .env
 
+    - name: Stop and remove existing container
+      run: |
+        docker stop alertme-api-container || true
+        docker rm alertme-api-container || true
+
     - name: Start Docker container
       run: |
         docker run -d --name alertme-api-container -p 8000:8000 langaraspiders/alertme-api:latest tail -f /dev/null
