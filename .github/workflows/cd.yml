@@ -1,0 +1,55 @@
+name: alertme-api cd
+    
+
+
+on:
+  push:
+    branches: [ "dev" ]
+  pull_request:
+    branches: [ "dev" ]
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Login Dockerhub
+      env:
+        DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}
+        DOCKER_PASSWORD: ${{secrets.DOCKERHUB_TOKEN}}
+      run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+      
+    - name: Pull Docker image
+      run: docker pull langaraspiders/alertme-api:latest
+
+    - name: Create .env file
+      run: |
+        echo '${{ toJSON(secrets) }}' | jq -r 'keys[] as $k | "\($k)=\(.[$k])"' > .env
+
+    - name: Start Docker container
+      run: |
+        docker run -d --name alertme-api-container -p 8000:8000 langaraspiders/alertme-api:latest tail -f /dev/null
+
+    - name: Copy .env file to container
+      run: docker cp .env alertme-api-container:/app/.env
+
+    - name: Run migrations and start server inside container
+      run: |
+        docker exec alertme-api-container sh -c "source /app/.env && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+
+    - name: Wait for a few seconds to let the container start
+      run: sleep 10
+
+    - name: Print container logs for debugging
+      run: docker logs alertme-api-container
+
+    - name: Cleanup .env file
+      run: rm .env
+      
+    - name: Show message on successful deployment
+      if: success()
+      run: echo "Success"
+     
