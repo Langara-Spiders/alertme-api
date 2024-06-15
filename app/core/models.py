@@ -167,10 +167,10 @@ class Incident(models.Model):
     is_internal_for_org = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     reported_by = models.CharField(
-        max_length=4, 
-        choices=REPORTED_BY_CHOICES, 
+        max_length=4,
+        choices=REPORTED_BY_CHOICES,
         default=REPORTED_BY_CHOICES[0][0]
-    )
+)
     voters = models.ManyToManyField(
         User,
         related_name="voted_incidents",
