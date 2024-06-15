@@ -34,14 +34,17 @@ jobs:
 
     - name: Start Docker container
       run: |
-        docker run -d --name alertme-api-container -p 8000:8000 langaraspiders/alertme-api:latest tail -f /dev/null
-
-    - name: Copy .env file to container
-      run: docker cp .env alertme-api-container:/app/.env
+        run: |
+          docker run -d --name alertme-api-container \
+            -p 8000:8000 \
+            --env-file .env \
+            langaraspiders/alertme-api:latest \
+            tail -f /dev/null
 
     - name: Run migrations and start server inside container
       run: |
-        docker exec alertme-api-container sh -c "source /app/.env && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+          docker exec alertme-api-container sh -c \
+            "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
 
     - name: Wait for a few seconds to let the container start
       run: sleep 10
@@ -55,4 +58,3 @@ jobs:
     - name: Show message on successful deployment
       if: success()
       run: echo "Success"
-     
