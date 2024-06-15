@@ -4,7 +4,7 @@ name: alertme-api cd
 
 on:
   push:
-    branches: [ "dev" ]
+    branches: [ "110-add-make-migrations-command-to-cd-pipeline" ]
 
 jobs:
   build:
@@ -44,7 +44,9 @@ jobs:
     - name: Run migrations and start server inside container
       run: |
         docker exec -d alertme-api-container sh -c \
-        "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+        "python manage.py makemigrations && \
+        python manage.py migrate && \
+        python manage.py runserver 0.0.0.0:8000"
 
     - name: Wait for a few seconds to let the container start
       run: sleep 10
