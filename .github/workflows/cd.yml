@@ -4,7 +4,7 @@ name: alertme-api cd
 
 on:
   push:
-    branches: [ "dev" ]
+    branches: [ "109-cd-pipeline-deployment-error-regarding-env-files" ]
 
 jobs:
   build:
