@@ -67,7 +67,6 @@ class Project(models.Model):
 # Custom manager for the User model
 class UserManager(BaseUserManager):
     """Manager for users"""
-
     def create_user(self, email, password=None, **extra_fields):
         """Create, save and return a new user"""
         user = self.model(email=email, **extra_fields)
@@ -104,7 +103,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     project_id = models.ForeignKey(
-        Project, on_delete=models.SET_NULL, null=True, blank=True
+        Project,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
     )
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
