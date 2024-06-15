@@ -5,8 +5,6 @@ name: alertme-api cd
 on:
   push:
     branches: [ "dev" ]
-  pull_request:
-    branches: [ "dev" ]
 
 jobs:
   build:
@@ -28,6 +26,11 @@ jobs:
     - name: Create .env file
       run: |
         echo '${{ toJSON(secrets) }}' | jq -r 'keys[] as $k | "\($k)=\(.[$k])"' > .env
+
+    - name: Stop and remove existing container
+      run: |
+        docker stop alertme-api-container || true
+        docker rm alertme-api-container || true
 
     - name: Start Docker container
       run: |
