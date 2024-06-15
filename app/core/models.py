@@ -27,7 +27,7 @@ REPORTED_BY_CHOICES = [
 ]
 
 
-# Model representing an organization with fields for name, email, address, and is active status
+# Model representing an organization with fields
 class Organization(models.Model):
     _id = models.UUIDField(
         primary_key=True,
@@ -46,7 +46,7 @@ class Organization(models.Model):
         db_table = 'organizations'
 
 
-# Model representing a project associated with an organization, including fields for name, address, description, coordinates, and status
+# Model representing a project associated with an organization
 class Project(models.Model):
     _id = models.UUIDField(
         primary_key=True,
@@ -71,7 +71,7 @@ class Project(models.Model):
         db_table = 'projects'
 
 
-# Custom manager for the User model, providing methods to create regular users and superusers
+# Custom manager for the User model
 class UserManager(BaseUserManager):
     """Manager for users"""
     def create_user(self, email, password=None, **extra_fields):
@@ -94,8 +94,7 @@ class UserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 
-# Custom user model with fields for user profile information, including picture, name, email, phone,
-# address, coordinates, notifications, associated project, and status flags
+# Custom user model with fields for user profile information
 class User(AbstractBaseUser, PermissionsMixin):
     """User in the system"""
     _id = models.UUIDField(
@@ -130,7 +129,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = 'email'
     
     
-# Model representing incident categories, including fields for name, icon, description, and timestamps
+# Model representing incident categories
 class IncidentCategory(models.Model):
     _id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=25)
@@ -146,15 +145,14 @@ class IncidentCategory(models.Model):
         verbose_name_plural = "Incident Categories"
         
 
-# Model for storing incident images, with a FileField for uploading images
+# Model for storing incident images
 class IncidentImage(models.Model):
     image = models.FileField(upload_to='incident_images')
     class Meta:
         db_table = 'incident_images'
         
         
-# Model representing an incident reported by users, including fields for incident details,
-# status, votes, and timestamps        
+# Model representing an incident reported by users     
 class Incident(models.Model):
     _id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user_id = models.ForeignKey(User, on_delete=models.PROTECT)
@@ -187,7 +185,7 @@ class Incident(models.Model):
         db_table = 'incidents'
     
     
-# Model representing a notification list for users, associating users with incidents they are notified about
+# Model representing a notification list for users
 class NotificationList(models.Model):
     _id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user_id = models.ForeignKey(User, on_delete=models.PROTECT)
