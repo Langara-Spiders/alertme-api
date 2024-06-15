@@ -34,13 +34,14 @@ jobs:
         docker stop alertme-api-container || true
         docker rm alertme-api-container || true
 
-    - name: Start Docker container
-      run: |
-        docker run -d --name alertme-api-container \
-        -p 8000:8000 \
-        --env-file .env \
-        langaraspiders/alertme-api:latest \
-        tail -f /dev/null
+    name: Run Docker container
+    run: |
+      docker run -d --name alertme-api-container \
+      -p 8000:8000 \
+      --env-file .env \
+      Langara-Spiders/alertme-api:latest \
+      tail -f /dev/null
+    working-directory: /home/ubuntu/actions-runner/_work/alertme-api/alertme-api
 
     - name: Run migrations and start server inside container
       run: |
