@@ -1,10 +1,8 @@
 name: alertme-api cd
     
-
-
 on:
   push:
-    branches: [ "110-add-make-migrations-command-to-cd-pipeline" ]
+    branches: [ "dev" ]
 
 jobs:
   build:
@@ -20,8 +18,7 @@ jobs:
       env:
         DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}
         DOCKER_PASSWORD: ${{secrets.DOCKERHUB_TOKEN}}
-      run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-      
+      run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD    
 
     - name: Create .env file
       run: |
