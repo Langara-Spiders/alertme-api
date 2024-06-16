@@ -35,11 +35,10 @@ jobs:
     - name: Build compose file
       env:
         DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}
-      run: |
-        docker-compose build app
+      run: docker compose build app
 
     - name: Start the container
-      run: docker-compose up -d app
+      run: docker compose up -d app
 
     - name: Wait for a few seconds to let the container start
       run: sleep 10
