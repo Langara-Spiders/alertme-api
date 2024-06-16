@@ -38,7 +38,7 @@ jobs:
       run: |
         docker run -d --name alertme-api-container \
         -p 8000:8000 \
-        --env-file .env \
+        --env-file /home/ubuntu/.env \
         -v /home/ubuntu/actions-runner/_work/alertme-api/alertme-api:/app \
         langaraspiders/alertme-api:latest \
         tail -f /dev/null
