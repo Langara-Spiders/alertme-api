@@ -22,8 +22,6 @@ jobs:
         DOCKER_PASSWORD: ${{secrets.DOCKERHUB_TOKEN}}
       run: docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
       
-    - name: Pull Docker image
-      run: docker pull langaraspiders/alertme-api:latest
 
     - name: Create .env file
       run: |
@@ -34,21 +32,14 @@ jobs:
         docker stop alertme-api-container || true
         docker rm alertme-api-container || true
 
-    - name: Run Docker container
+    - name: Build compose file
+      env:
+        DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}
       run: |
-        docker run -d --name alertme-api-container \
-        -p 8000:8000 \
-        --env-file /home/ubuntu/.env \
-        -v /home/ubuntu/actions-runner/_work/alertme-api/alertme-api:/app \
-        langaraspiders/alertme-api:latest \
-        tail -f /dev/null
+        docker-compose build app
 
-    - name: Run migrations and start server inside container
-      run: |
-        docker exec -d alertme-api-container sh -c \
-        "python manage.py makemigrations && \
-        python manage.py migrate && \
-        python manage.py runserver 0.0.0.0:8000"
+    - name: Start the container
+      run: docker-compose up -d app
 
     - name: Wait for a few seconds to let the container start
       run: sleep 10
