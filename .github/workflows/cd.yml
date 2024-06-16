@@ -39,9 +39,9 @@ jobs:
         docker run -d --name alertme-api-container \
         -p 8000:8000 \
         --env-file .env \
+        /home/ubuntu/actions-runner/_work/alertme-api/alertme-api:/app \
         langaraspiders/alertme-api:latest \
         tail -f /dev/null
-      working-directory: /home/ubuntu/actions-runner/_work/alertme-api/alertme-api
 
     - name: Run migrations and start server inside container
       run: |
