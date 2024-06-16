@@ -81,6 +81,8 @@ class SignupView(View):
                 os.environ.get('GOOGLE_CLIENT_ID')
             )
 
+            data.pop('token')
+
             # Create and return user
             user = get_user_model().objects.create(
                 **data,
