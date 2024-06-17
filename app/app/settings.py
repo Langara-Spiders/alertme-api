@@ -10,7 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
-import json, os
+import json
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -39,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'storages',
     'core',
+    'incident'
 ]
 
 MIDDLEWARE = [
@@ -154,4 +156,4 @@ MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
 # Custom user model
 AUTH_USER_MODEL = 'core.User'
 
-APPEND_SLASH=False
+APPEND_SLASH = False
