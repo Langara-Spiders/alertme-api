@@ -17,7 +17,7 @@ from .messages import MESSAGES
 
 class LoginView(View):
     def post(self, request):
-        lng = request.headers.get('Accept-Language', 'en-CA')
+        lng = request.lng
 
         try:
             data = json.loads(request.body)
@@ -69,7 +69,7 @@ class LoginView(View):
 
 class SignupView(View):
     def post(self, request):
-        lng = request.headers.get('Accept-Language', 'en-CA')
+        lng = request.lng
 
         try:
             data = json.loads(request.body)
@@ -127,7 +127,8 @@ class SignupView(View):
 
 class ProfileView(View):
     def get(self, request):
-        lng = request.headers.get('Accept-Language', 'en-CA')
+        lng = request.lng
+
         try:
             # Get authorized user info
             user_info = request.user_info

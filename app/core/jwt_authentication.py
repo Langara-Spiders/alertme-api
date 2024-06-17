@@ -36,6 +36,9 @@ class JWTAuthenticationMiddleware:
                 return JsonResponse(response, status=response.get('status'))
 
             data = response.get('data')
+            # Attach user language
+            request.lng = lng
+            # Attach user info
             request.user_info = {
                 "_id": data.get('_id'),
                 "email": data.get('email'),
