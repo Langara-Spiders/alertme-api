@@ -67,6 +67,7 @@ class Project(models.Model):
 # Custom manager for the User model
 class UserManager(BaseUserManager):
     """Manager for users"""
+
     def create_user(self, email, password=None, **extra_fields):
         """Create, save and return a new user"""
         user = self.model(email=email, **extra_fields)
@@ -150,13 +151,13 @@ class Incident(models.Model):
     _id = models.UUIDField(
         primary_key=True, default=uuid.uuid4, editable=False)
     user_id = models.ForeignKey(User, on_delete=models.PROTECT)
-    images = models.ForeignKey(
-        IncidentImage, on_delete=models.PROTECT, null=True, blank=True
+    images = models.ManyToManyField(
+        IncidentImage, related_name="incidents", blank=True
     )
     incident_category_id = models.ForeignKey(
         IncidentCategory, on_delete=models.PROTECT)
     subject = models.CharField(max_length=30)
-    description = models.CharField(max_length=300)
+    description = models.CharField(max_length=200)
     coordinate = models.JSONField(default=dict)
     upvote_count = models.IntegerField(default=0)
     report_count = models.IntegerField(default=0)
