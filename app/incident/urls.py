@@ -11,6 +11,8 @@ from .views import (
 app_name = 'incident'
 
 urlpatterns = [
-    path('category', IncidentCategoryView.as_view(), name='incident-categories'),
+    path('category',
+         IncidentCategoryView.as_view(),
+         name='incident-categories'),
     path('', IncidentView.as_view(), name='incidents'),
 ]
