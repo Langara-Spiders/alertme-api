@@ -1,14 +1,10 @@
 # Replace with your User model import
-from core.models import Incident
 from django.contrib.auth import (
     get_user_model
 )
-from django.shortcuts import render
 from django.http import JsonResponse
 from django.views import View
-import google.auth.transport
 import json
-from django.forms.models import model_to_dict
 from core.utils import upload_file_to_s3
 from core.models import IncidentImage, Incident
 from core.models import IncidentCategory
@@ -30,7 +26,8 @@ class IncidentCategoryView(View):
                     'name': category.name,
                 })
             return JsonResponse({
-                'message': MESSAGES[lng].get('SUCCESS_MESSAGE_FOR_INCIDENT_CATEGORY'),
+                'message': MESSAGES[lng].
+                get('SUCCESS_MESSAGE_FOR_INCIDENT_CATEGORY'),
                 'data': category_list,
                 'error': False,
                 'status': HTTPStatus.OK
@@ -88,14 +85,16 @@ class IncidentView(View):
             }, status=HTTPStatus.OK)
         except ValueError as ve:
             return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_TOKEN').format(str(ve)),
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_TOKEN').
+                format(str(ve)),
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.BAD_REQUEST
             }, status=HTTPStatus.BAD_REQUEST)
         except Exception as e:
             return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_TOKEN').format(str(e)),
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_TOKEN').
+                format(str(e)),
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.INTERNAL_SERVER_ERROR
@@ -154,28 +153,32 @@ class IncidentView(View):
             }, status=HTTPStatus.CREATED)
         except json.JSONDecodeError as jde:
             return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_DATA').format(str(jde)),
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_DATA').
+                format(str(jde)),
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.BAD_REQUEST
             }, status=HTTPStatus.BAD_REQUEST)
-        except get_user_model().DoesNotExist as dne:
+        except get_user_model().DoesNotExist:
             return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_NOT_FOUND').format('User'),
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_NOT_FOUND').
+                format('User'),
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.NOT_FOUND
             }, status=HTTPStatus.NOT_FOUND)
-        except IncidentCategory.DoesNotExist as dne:
+        except IncidentCategory.DoesNotExist:
             return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_NOT_FOUND').format('Incident Category'),
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_NOT_FOUND').
+                format('Incident Category'),
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.NOT_FOUND
             }, status=HTTPStatus.NOT_FOUND)
         except Exception as e:
             return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_TOKEN').format(str(e)),
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_TOKEN').
+                format(str(e)),
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.INTERNAL_SERVER_ERROR
@@ -188,7 +191,8 @@ class IncidentView(View):
             incident_id = request.GET.get('id')
             if not incident_id:
                 return JsonResponse({
-                    'message': MESSAGES[lng].get('ERROR_MESSAGE_NOT_FOUND').format('Incident ID is required'),
+                    'message': MESSAGES[lng].get('ERROR_MESSAGE_NOT_FOUND').
+                    format('Incident ID is required'),
                     'data': None,
                     'error': True,
                     'status': HTTPStatus.BAD_REQUEST
@@ -222,7 +226,8 @@ class IncidentView(View):
 
         except Incident.DoesNotExist:
             return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_NOT_FOUND').format(f'Incident with ID {incident_id} does not exist'),
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_NOT_FOUND').
+                format(f'Incident with ID {incident_id} does not exist'),
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.NOT_FOUND
@@ -230,7 +235,8 @@ class IncidentView(View):
 
         except Exception as e:
             return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_TOKEN').format(str(e)),
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_TOKEN').
+                format(str(e)),
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.INTERNAL_SERVER_ERROR
@@ -242,7 +248,8 @@ class IncidentView(View):
         incident_id = request.GET.get('id')
         if not incident_id:
             return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_NOT_FOUND').format('Incident ID is required'),
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_NOT_FOUND').
+                format('Incident ID is required'),
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.BAD_REQUEST

@@ -11,7 +11,6 @@ from .messages import MESSAGES
 import boto3
 from botocore.exceptions import ClientError
 import uuid
-from django.utils.text import Truncator
 
 # AWS S3 Configurations
 AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
