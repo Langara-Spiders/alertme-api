@@ -102,7 +102,6 @@ class IncidentView(View):
             }, status=HTTPStatus.INTERNAL_SERVER_ERROR)
 
     # Code logic to report an incident
-
     def post(self, request):
         lng = 'en-CA'
         try:
@@ -183,7 +182,6 @@ class IncidentView(View):
             }, status=HTTPStatus.INTERNAL_SERVER_ERROR)
 
     # Code Logic for Voting an Incident
-
     def put(self, request):
         lng = 'en-CA'
         try:
@@ -253,7 +251,6 @@ class IncidentView(View):
         incident = get_object_or_404(Incident, _id=incident_id)
 
         # Delete related images
-        # incident.images.clear()
         for image in incident.images.all():
             incident.images.remove(image)
             image.delete()
