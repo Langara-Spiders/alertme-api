@@ -17,8 +17,7 @@ from .messages import MESSAGES
 
 class LoginView(View):
     def post(self, request):
-        lng = request.lng
-
+        lng = 'en-CA'
         try:
             data = json.loads(request.body)
             # Check if OAuth token was valid
@@ -69,7 +68,7 @@ class LoginView(View):
 
 class SignupView(View):
     def post(self, request):
-        lng = request.lng
+        lng = 'en-CA'
 
         try:
             data = json.loads(request.body)
@@ -127,7 +126,7 @@ class SignupView(View):
 
 class ProfileView(View):
     def get(self, request):
-        lng = request.lng
+        lng = 'en-CA'
 
         try:
             # Get authorized user info
@@ -162,7 +161,7 @@ class ProfileView(View):
         }, status=HTTPStatus.INTERNAL_SERVER_ERROR)
 
     def put(self, request):
-        lng = request.headers.get('Accept-Language', 'en-CA')
+        lng = 'en-CA'
 
         try:
             data = json.loads(request.body)

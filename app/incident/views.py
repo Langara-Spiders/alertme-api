@@ -20,7 +20,7 @@ from .messages import MESSAGES
 # API Logic for Incident Category
 class IncidentCategoryView(View):
     def get(self, request):
-        lng = request.lng
+        lng = 'en-CA'
         try:
             categories = IncidentCategory.objects.all()
             category_list = []
@@ -49,17 +49,20 @@ class IncidentCategoryView(View):
 class IncidentView(View):
     # Code logic to retrieve incidents
     def get(self, request):
-        lng = request.lng
+        lng = 'en-CA'
         try:
-            incident_id = request.params.get('id')
+            incident_id = request.GET.get('id')
             if not incident_id:
                 raise ValueError("Incident ID is required")
 
             incident = get_object_or_404(Incident, _id=incident_id)
+            voters_list = list(incident.voters.values_list('_id', flat=True))
+            images_list = list(incident.images.values_list('image', flat=True))
+
             single_incident = {
                 'id': str(incident._id),
                 'user_id': str(incident.user_id._id),
-                'user_reported': incident.user_id.username,
+                'user_reported': str(incident.user_id.name),
                 'incident_category_id': str(incident.incident_category_id._id),
                 'incident_category_name': incident.incident_category_id.name,
                 'subject': incident.subject,
@@ -74,7 +77,8 @@ class IncidentView(View):
                 'reported_by': incident.reported_by,
                 'created_at': incident.created_at.isoformat(),
                 'updated_at': incident.updated_at.isoformat(),
-                'voters': incident.voters
+                'voters': voters_list,
+                'images': images_list
             }
             return JsonResponse({
                 'message': MESSAGES[lng].get('SUCCESS_MESSAGE'),
@@ -100,13 +104,15 @@ class IncidentView(View):
     # Code logic to report an incident
 
     def post(self, request):
-        lng = request.lng
+        lng = 'en-CA'
         try:
             data = json.loads(request.POST['json_data'])
 
             uploaded_images = request.FILES.getlist('images')
 
             user_info = request.user_info
+            print("***USER INFO****")
+            print(user_info)
             incident_category_id = data.get('incident_category_id')
             subject = data.get('subject')
             description = data.get('description')
@@ -144,7 +150,7 @@ class IncidentView(View):
 
             # Return success response
             return JsonResponse({
-                'message': MESSAGES[lng].get('SUCCESS_MESSAGE'),
+                'message': MESSAGES[lng].get('SUCCESS_REPORT_MESSAGE'),
                 'data': {'incident_id': str(incident._id)},
                 'error': False,
                 'status': HTTPStatus.CREATED
@@ -181,9 +187,9 @@ class IncidentView(View):
     # Code Logic for Voting an Incident
 
     def put(self, request):
-        lng = request.lng
+        lng = 'en-CA'
         try:
-            incident_id = request.params.get('id')
+            incident_id = request.GET.get('id')
             if not incident_id:
                 return JsonResponse({
                     'message': MESSAGES[lng].get('ERROR_MESSAGE_NOT_FOUND').format('Incident ID is required'),
@@ -193,9 +199,10 @@ class IncidentView(View):
                 }, status=HTTPStatus.BAD_REQUEST)
 
             user_info = request.user_info
+            current_user_id = user_info.get('_id')
             incident = get_object_or_404(Incident, _id=incident_id)
 
-            if incident.voters.filter(id=user_info._id).exists():
+            if incident.voters.filter(_id=current_user_id).exists():
                 return JsonResponse({
                     'message': MESSAGES[lng].get('ALREADY_VOTED_MESSAGE'),
                     'already_voted': True,
@@ -204,7 +211,7 @@ class IncidentView(View):
                 }, status=HTTPStatus.OK)
 
             # Add the user to the voters of the incident
-            incident.voters.add(user_info._id)
+            incident.voters.add(current_user_id)
 
             # Increment the upvote_count of the incident
             incident.upvote_count += 1
