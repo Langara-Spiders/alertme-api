@@ -30,7 +30,7 @@ class IncidentCategoryView(View):
                     'name': category.name,
                 })
             return JsonResponse({
-                'message': MESSAGES[lng].get('SUCCESS_MESSAGE'),
+                'message': MESSAGES[lng].get('SUCCESS_MESSAGE_FOR_INCIDENT_CATEGORY'),
                 'data': category_list,
                 'error': False,
                 'status': HTTPStatus.OK
@@ -81,7 +81,7 @@ class IncidentView(View):
                 'images': images_list
             }
             return JsonResponse({
-                'message': MESSAGES[lng].get('SUCCESS_MESSAGE'),
+                'message': MESSAGES[lng].get('SUCCESS_MESSAGE_TO_RETRIEVE_INCIDENT'),
                 'data': single_incident,
                 'error': False,
                 'status': HTTPStatus.OK
@@ -111,8 +111,6 @@ class IncidentView(View):
             uploaded_images = request.FILES.getlist('images')
 
             user_info = request.user_info
-            print("***USER INFO****")
-            print(user_info)
             incident_category_id = data.get('incident_category_id')
             subject = data.get('subject')
             description = data.get('description')
@@ -239,3 +237,34 @@ class IncidentView(View):
                 'error': True,
                 'status': HTTPStatus.INTERNAL_SERVER_ERROR
             }, status=HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    # Code Logic for Deleting an Incident
+    def delete(self, request):
+        lng = 'en-CA'
+        incident_id = request.GET.get('id')
+        if not incident_id:
+            return JsonResponse({
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_NOT_FOUND').format('Incident ID is required'),
+                'data': None,
+                'error': True,
+                'status': HTTPStatus.BAD_REQUEST
+            }, status=HTTPStatus.BAD_REQUEST)
+
+        incident = get_object_or_404(Incident, _id=incident_id)
+
+        # Delete related images
+        # incident.images.clear()
+        for image in incident.images.all():
+            incident.images.remove(image)
+            image.delete()
+
+        incident.voters.clear()
+
+        # Delete the incident itself
+        incident.delete()
+
+        return JsonResponse({
+            'message': MESSAGES[lng].get('SUCCESS_MESSAGE_INCIDENT_DELETED'),
+            'error': False,
+            'status': HTTPStatus.OK
+        }, status=HTTPStatus.OK)
