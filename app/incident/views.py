@@ -54,13 +54,15 @@ class IncidentView(View):
 
             incident = get_object_or_404(Incident, _id=incident_id)
             voters_list = list(incident.voters.values_list('_id', flat=True))
-            images_list = list(incident.images.values_list('image', flat=True))
+            images_list = list(incident.images.
+                               values_list('image', flat=True))
 
             single_incident = {
                 'id': str(incident._id),
                 'user_id': str(incident.user_id._id),
                 'user_reported': str(incident.user_id.name),
-                'incident_category_id': str(incident.incident_category_id._id),
+                'incident_category_id':
+                    str(incident.incident_category_id._id),
                 'incident_category_name': incident.incident_category_id.name,
                 'subject': incident.subject,
                 'description': incident.description,
@@ -78,7 +80,8 @@ class IncidentView(View):
                 'images': images_list
             }
             return JsonResponse({
-                'message': MESSAGES[lng].get('SUCCESS_MESSAGE_TO_RETRIEVE_INCIDENT'),
+                'message': MESSAGES[lng].
+                get('SUCCESS_MESSAGE_TO_RETRIEVE_INCIDENT'),
                 'data': single_incident,
                 'error': False,
                 'status': HTTPStatus.OK
