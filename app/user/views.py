@@ -17,7 +17,7 @@ from .messages import MESSAGES
 
 class LoginView(View):
     def post(self, request):
-        lng = 'en-CA'
+        lng = request.lng
         try:
             data = json.loads(request.body)
             # Check if OAuth token was valid
@@ -68,8 +68,7 @@ class LoginView(View):
 
 class SignupView(View):
     def post(self, request):
-        lng = 'en-CA'
-
+        lng = request.lng
         try:
             data = json.loads(request.body)
 
@@ -126,8 +125,7 @@ class SignupView(View):
 
 class ProfileView(View):
     def get(self, request):
-        lng = 'en-CA'
-
+        lng = request.lng
         try:
             # Get authorized user info
             user_info = request.user_info
@@ -161,8 +159,7 @@ class ProfileView(View):
         }, status=HTTPStatus.INTERNAL_SERVER_ERROR)
 
     def put(self, request):
-        lng = 'en-CA'
-
+        lng = request.lng
         try:
             data = json.loads(request.body)
             # Get authorized user info
