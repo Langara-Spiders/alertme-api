@@ -20,6 +20,9 @@ class JWTAuthenticationMiddleware:
         path_info = request.path_info
         resolved_path = resolve(path_info)
 
+        # Attach user language
+        request.lng = lng
+
         # Check if current path is in excluded_paths or admin paths
         if (
             request.path_info in excluded_paths or
@@ -36,8 +39,6 @@ class JWTAuthenticationMiddleware:
                 return JsonResponse(response, status=response.get('status'))
 
             data = response.get('data')
-            # Attach user language
-            request.lng = lng
             # Attach user info
             request.user_info = {
                 "_id": data.get('_id'),
