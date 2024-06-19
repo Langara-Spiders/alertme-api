@@ -16,7 +16,7 @@ from .messages import MESSAGES
 # API Logic for Incident Category
 class IncidentCategoryView(View):
     def get(self, request):
-        lng = 'en-CA'
+        lng = request.lng
         try:
             categories = IncidentCategory.objects.all()
             category_list = []
@@ -46,7 +46,7 @@ class IncidentCategoryView(View):
 class IncidentView(View):
     # Code logic to retrieve incidents
     def get(self, request):
-        lng = 'en-CA'
+        lng = request.lng
         try:
             incident_id = request.GET.get('id')
             user_id = request.GET.get('user_id')
@@ -158,7 +158,7 @@ class IncidentView(View):
 
     # Code logic to report an incident
     def post(self, request):
-        lng = 'en-CA'
+        lng = request.lng
         try:
             data = json.loads(request.POST['json_data'])
 
@@ -219,7 +219,7 @@ class IncidentView(View):
 
     # Code Logic for Voting an Incident
     def put(self, request):
-        lng = 'en-CA'
+        lng = request.lng
         try:
             incident_id = request.GET.get('id')
             if not incident_id:
@@ -268,7 +268,7 @@ class IncidentView(View):
 
     # Code Logic for Deleting an Incident
     def delete(self, request):
-        lng = 'en-CA'
+        lng = request.lng
         incident_id = request.GET.get('id')
         if not incident_id:
             return JsonResponse({
