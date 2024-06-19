@@ -16,7 +16,7 @@ from .messages import MESSAGES
 # API Logic for Incident Category
 class IncidentCategoryView(View):
     def get(self, request):
-        lng = request.lng
+        lng = 'en-CA'
         try:
             categories = IncidentCategory.objects.all()
             category_list = []
@@ -35,7 +35,7 @@ class IncidentCategoryView(View):
         except Exception as e:
             return JsonResponse({
                 'message': MESSAGES[lng]
-                .get('ERROR_MESSAGE_INVALID_TOKEN').format(str(e)),
+                .get('ERROR_MESSAGE_FOR_INCIDENT_CATEGORY').format(str(e)),
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.BAD_REQUEST
@@ -46,57 +46,110 @@ class IncidentCategoryView(View):
 class IncidentView(View):
     # Code logic to retrieve incidents
     def get(self, request):
-        lng = request.lng
+        lng = 'en-CA'
         try:
             incident_id = request.GET.get('id')
-            if not incident_id:
-                raise ValueError("Incident ID is required")
+            user_id = request.GET.get('user_id')
 
-            incident = get_object_or_404(Incident, _id=incident_id)
-            voters_list = list(incident.voters.values_list('_id', flat=True))
-            images_list = list(incident.images.
-                               values_list('image', flat=True))
+            if incident_id:
+                incident = get_object_or_404(Incident, _id=incident_id)
+                voters_list = list(
+                    incident.voters.values_list('_id', flat=True))
+                images_list = list(incident.images.
+                                   values_list('image', flat=True))
 
-            single_incident = {
-                'id': str(incident._id),
-                'user_id': str(incident.user_id._id),
-                'user_reported': str(incident.user_id.name),
-                'incident_category_id':
-                    str(incident.incident_category_id._id),
-                'incident_category_name': incident.incident_category_id.name,
-                'subject': incident.subject,
-                'description': incident.description,
-                'coordinate': incident.coordinate,
-                'upvote_count': incident.upvote_count,
-                'report_count': incident.report_count,
-                'status': incident.status,
-                'is_accepted_by_org': incident.is_accepted_by_org,
-                'is_internal_for_org': incident.is_internal_for_org,
-                'is_active': incident.is_active,
-                'reported_by': incident.reported_by,
-                'created_at': incident.created_at.isoformat(),
-                'updated_at': incident.updated_at.isoformat(),
-                'voters': voters_list,
-                'images': images_list
-            }
-            return JsonResponse({
-                'message': MESSAGES[lng].
-                get('SUCCESS_MESSAGE_TO_RETRIEVE_INCIDENT'),
-                'data': single_incident,
-                'error': False,
-                'status': HTTPStatus.OK
-            }, status=HTTPStatus.OK)
-        except ValueError as ve:
-            return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_TOKEN').
-                format(str(ve)),
-                'data': None,
-                'error': True,
-                'status': HTTPStatus.BAD_REQUEST
-            }, status=HTTPStatus.BAD_REQUEST)
+                single_incident = {
+                    'id': str(incident._id),
+                    'user_id': str(incident.user_id._id),
+                    'user_reported': str(incident.user_id.name),
+                    'incident_category_id':
+                        str(incident.incident_category_id._id),
+                    'incident_category_name': incident.
+                        incident_category_id.name,
+                    'subject': incident.subject,
+                    'description': incident.description,
+                    'coordinate': incident.coordinate,
+                    'upvote_count': incident.upvote_count,
+                    'report_count': incident.report_count,
+                    'status': incident.status,
+                    'is_accepted_by_org': incident.is_accepted_by_org,
+                    'is_internal_for_org': incident.is_internal_for_org,
+                    'is_active': incident.is_active,
+                    'reported_by': incident.reported_by,
+                    'created_at': incident.created_at.isoformat(),
+                    'updated_at': incident.updated_at.isoformat(),
+                    'voters': voters_list,
+                    'images': images_list
+                }
+                return JsonResponse({
+                    'message': MESSAGES[lng].
+                    get('SUCCESS_MESSAGE_TO_RETRIEVE_INCIDENT'),
+                    'data': single_incident,
+                    'error': False,
+                    'status': HTTPStatus.OK
+                }, status=HTTPStatus.OK)
+
+            elif user_id:
+                print(request.user_info)
+
+                if (request.user_info.get('_id') == user_id):
+
+                    user_incidents = Incident.objects.filter(user_id=user_id)
+                    incident_list = []
+                    for incident in user_incidents:
+                        incident_data = {
+                            'id': str(incident._id),
+                            'user_id': str(incident.user_id._id),
+                            'user_reported': str(incident.user_id.name),
+                            'incident_category_id': str(incident.
+                                                        incident_category_id.
+                                                        _id),
+                            'incident_category_name': incident.
+                            incident_category_id.
+                            name,
+                            'subject': incident.subject,
+                            'description': incident.description,
+                            'coordinate': incident.coordinate,
+                            'upvote_count': incident.upvote_count,
+                            'report_count': incident.report_count,
+                            'status': incident.status,
+                            'is_accepted_by_org': incident.
+                            is_accepted_by_org,
+                            'is_internal_for_org': incident.
+                            is_internal_for_org,
+                            'is_active': incident.is_active,
+                            'reported_by': incident.reported_by,
+                            'created_at': incident.created_at.isoformat(),
+                            'updated_at': incident.updated_at.isoformat(),
+                            'voters': list(incident.voters.
+                                           values_list('_id', flat=True)),
+                            'images': list(incident.images.
+                                           values_list('image', flat=True))
+                        }
+                        incident_list.append(incident_data)
+
+                    return JsonResponse({
+                        'message': MESSAGES[lng].
+                        get('SUCCESS_MESSAGE_TO_RETRIEVE_MY_INCIDENTS'),
+                        'data': incident_list,
+                        'error': False,
+                        'status': HTTPStatus.OK
+                    }, status=HTTPStatus.OK)
+
+            else:
+
+                return JsonResponse({
+                    'message': MESSAGES[lng].
+                    get('ERROR_MESSAGE_ID_NOT_PROVIDED'),
+                    'data': None,
+                    'error': True,
+                    'status': HTTPStatus.BAD_REQUEST
+                }, status=HTTPStatus.BAD_REQUEST)
+
         except Exception as e:
             return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_TOKEN').
+                'message': MESSAGES[lng].
+                get('ERROR_MESSAGE_FOR_BOTH_INCIDENT_USER').
                 format(str(e)),
                 'data': None,
                 'error': True,
@@ -105,7 +158,7 @@ class IncidentView(View):
 
     # Code logic to report an incident
     def post(self, request):
-        lng = request.lng
+        lng = 'en-CA'
         try:
             data = json.loads(request.POST['json_data'])
 
@@ -154,33 +207,10 @@ class IncidentView(View):
                 'error': False,
                 'status': HTTPStatus.CREATED
             }, status=HTTPStatus.CREATED)
-        except json.JSONDecodeError as jde:
-            return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_DATA').
-                format(str(jde)),
-                'data': None,
-                'error': True,
-                'status': HTTPStatus.BAD_REQUEST
-            }, status=HTTPStatus.BAD_REQUEST)
-        except get_user_model().DoesNotExist:
-            return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_NOT_FOUND').
-                format('User'),
-                'data': None,
-                'error': True,
-                'status': HTTPStatus.NOT_FOUND
-            }, status=HTTPStatus.NOT_FOUND)
-        except IncidentCategory.DoesNotExist:
-            return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_NOT_FOUND').
-                format('Incident Category'),
-                'data': None,
-                'error': True,
-                'status': HTTPStatus.NOT_FOUND
-            }, status=HTTPStatus.NOT_FOUND)
+
         except Exception as e:
             return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_TOKEN').
+                'message': MESSAGES[lng].get('ERROR_REPORT_MESSAGE').
                 format(str(e)),
                 'data': None,
                 'error': True,
@@ -189,7 +219,7 @@ class IncidentView(View):
 
     # Code Logic for Voting an Incident
     def put(self, request):
-        lng = request.lng
+        lng = 'en-CA'
         try:
             incident_id = request.GET.get('id')
             if not incident_id:
@@ -227,18 +257,9 @@ class IncidentView(View):
                 'status': HTTPStatus.OK
             }, status=HTTPStatus.OK)
 
-        except Incident.DoesNotExist:
-            return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_NOT_FOUND').
-                format(f'Incident with ID {incident_id} does not exist'),
-                'data': None,
-                'error': True,
-                'status': HTTPStatus.NOT_FOUND
-            }, status=HTTPStatus.NOT_FOUND)
-
         except Exception as e:
             return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_TOKEN').
+                'message': MESSAGES[lng].get('ERROR_VOTE_MESSAGE').
                 format(str(e)),
                 'data': None,
                 'error': True,
@@ -247,7 +268,7 @@ class IncidentView(View):
 
     # Code Logic for Deleting an Incident
     def delete(self, request):
-        lng = request.lng
+        lng = 'en-CA'
         incident_id = request.GET.get('id')
         if not incident_id:
             return JsonResponse({
