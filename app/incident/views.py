@@ -11,6 +11,7 @@ from core.models import IncidentCategory
 from django.shortcuts import get_object_or_404
 from http import HTTPStatus
 from .messages import MESSAGES
+from math import radians, cos, sin, asin, sqrt
 
 
 # API Logic for Incident Category
@@ -50,22 +51,25 @@ class IncidentView(View):
         try:
             incident_id = request.GET.get('id')
             user_id = request.GET.get('user_id')
+            user_lat = request.GET.get('lat')
+            user_lng = request.GET.get('lng')
+            radius = request.GET.get('r')
+            filter_by = request.GET.get('filter_by')
+
+            if user_lat and user_lng and radius:
+                return self.get_nearby(request)
 
             if incident_id:
                 incident = get_object_or_404(Incident, _id=incident_id)
-                voters_list = list(
-                    incident.voters.values_list('_id', flat=True))
-                images_list = list(incident.images.
-                                   values_list('image', flat=True))
+                voters_list = list(incident.voters.values_list('_id', flat=True))
+                images_list = list(incident.images.values_list('image', flat=True))
 
                 single_incident = {
                     'id': str(incident._id),
                     'user_id': str(incident.user_id._id),
                     'user_reported': str(incident.user_id.name),
-                    'incident_category_id':
-                        str(incident.incident_category_id._id),
-                    'incident_category_name': incident.
-                        incident_category_id.name,
+                    'incident_category_id': str(incident.incident_category_id._id),
+                    'incident_category_name': incident.incident_category_id.name,
                     'subject': incident.subject,
                     'description': incident.description,
                     'coordinate': incident.coordinate,
@@ -81,66 +85,53 @@ class IncidentView(View):
                     'voters': voters_list,
                     'images': images_list
                 }
+
                 return JsonResponse({
-                    'message': MESSAGES[lng].
-                    get('SUCCESS_MESSAGE_TO_RETRIEVE_INCIDENT'),
+                    'message': MESSAGES[lng].get('SUCCESS_MESSAGE_TO_RETRIEVE_INCIDENT'),
                     'data': single_incident,
                     'error': False,
                     'status': HTTPStatus.OK
                 }, status=HTTPStatus.OK)
 
             elif user_id:
-                print(request.user_info)
-
-                if (request.user_info.get('_id') == user_id):
-
-                    user_incidents = Incident.objects.filter(user_id=user_id)
-                    incident_list = []
-                    for incident in user_incidents:
-                        incident_data = {
-                            'id': str(incident._id),
-                            'user_id': str(incident.user_id._id),
-                            'user_reported': str(incident.user_id.name),
-                            'incident_category_id': str(incident.
-                                                        incident_category_id.
-                                                        _id),
-                            'incident_category_name': incident.
-                            incident_category_id.
-                            name,
-                            'subject': incident.subject,
-                            'description': incident.description,
-                            'coordinate': incident.coordinate,
-                            'upvote_count': incident.upvote_count,
-                            'report_count': incident.report_count,
-                            'status': incident.status,
-                            'is_accepted_by_org': incident.
-                            is_accepted_by_org,
-                            'is_internal_for_org': incident.
-                            is_internal_for_org,
-                            'is_active': incident.is_active,
-                            'reported_by': incident.reported_by,
-                            'created_at': incident.created_at.isoformat(),
-                            'updated_at': incident.updated_at.isoformat(),
-                            'voters': list(incident.voters.
-                                           values_list('_id', flat=True)),
-                            'images': list(incident.images.
-                                           values_list('image', flat=True))
-                        }
-                        incident_list.append(incident_data)
-
-                    return JsonResponse({
-                        'message': MESSAGES[lng].
-                        get('SUCCESS_MESSAGE_TO_RETRIEVE_MY_INCIDENTS'),
-                        'data': incident_list,
-                        'error': False,
-                        'status': HTTPStatus.OK
-                    }, status=HTTPStatus.OK)
-
-            else:
+                user_incidents = Incident.objects.filter(user_id=user_id)
+                if filter_by:
+                    user_incidents = user_incidents.filter(status=filter_by)
+                incident_list = []
+                for incident in user_incidents:
+                    incident_data = {
+                        'id': str(incident._id),
+                        'user_id': str(incident.user_id._id),
+                        'user_reported': str(incident.user_id.name),
+                        'incident_category_id': str(incident.incident_category_id._id),
+                        'incident_category_name': incident.incident_category_id.name,
+                        'subject': incident.subject,
+                        'description': incident.description,
+                        'coordinate': incident.coordinate,
+                        'upvote_count': incident.upvote_count,
+                        'report_count': incident.report_count,
+                        'status': incident.status,
+                        'is_accepted_by_org': incident.is_accepted_by_org,
+                        'is_internal_for_org': incident.is_internal_for_org,
+                        'is_active': incident.is_active,
+                        'reported_by': incident.reported_by,
+                        'created_at': incident.created_at.isoformat(),
+                        'updated_at': incident.updated_at.isoformat(),
+                        'voters': list(incident.voters.values_list('_id', flat=True)),
+                        'images': list(incident.images.values_list('image', flat=True))
+                    }
+                    incident_list.append(incident_data)
 
                 return JsonResponse({
-                    'message': MESSAGES[lng].
-                    get('ERROR_MESSAGE_ID_NOT_PROVIDED'),
+                    'message': MESSAGES[lng].get('SUCCESS_MESSAGE_TO_RETRIEVE_MY_INCIDENTS'),
+                    'data': incident_list,
+                    'error': False,
+                    'status': HTTPStatus.OK
+                }, status=HTTPStatus.OK)
+
+            else:
+                return JsonResponse({
+                    'message': MESSAGES[lng].get('ERROR_MESSAGE_ID_NOT_PROVIDED'),
                     'data': None,
                     'error': True,
                     'status': HTTPStatus.BAD_REQUEST
@@ -148,9 +139,7 @@ class IncidentView(View):
 
         except Exception as e:
             return JsonResponse({
-                'message': MESSAGES[lng].
-                get('ERROR_MESSAGE_FOR_BOTH_INCIDENT_USER').
-                format(str(e)),
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_FOR_BOTH_INCIDENT_USER').format(str(e)),
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.INTERNAL_SERVER_ERROR
@@ -296,3 +285,72 @@ class IncidentView(View):
             'error': False,
             'status': HTTPStatus.OK
         }, status=HTTPStatus.OK)
+
+    def haversine(self, lon1, lat1, lon2, lat2):
+        """
+        Calculate the great-circle distance in kilometers between two points 
+        on the earth (specified in decimal degrees)
+        """
+        # Convert decimal degrees to radians
+        lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+
+        # Haversine formula
+        dlon = lon2 - lon1 
+        dlat = lat2 - lat1 
+        a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+        c = 2 * asin(sqrt(a)) 
+        r = 6371  # Radius of Earth in kilometers. Use 3956 for miles.
+        return c * r
+
+    def get_nearby(self, request):
+        lng = request.lng
+        try:
+            user_lat = float(request.GET.get('lat'))
+            user_lng = float(request.GET.get('lng'))
+            radius = float(request.GET.get('r'))
+
+            incidents = Incident.objects.all()
+            nearby_incidents = []
+
+            for incident in incidents:
+                incident_lat, incident_lng = map(float, incident.coordinate.split(","))
+                distance = self.haversine(user_lng, user_lat, incident_lng, incident_lat)
+                if distance <= radius:
+                    incident_data = {
+                        'id': str(incident._id),
+                        'user_id': str(incident.user_id._id),
+                        'user_reported': str(incident.user_id.name),
+                        'incident_category_id': str(incident.incident_category_id._id),
+                        'incident_category_name': incident.incident_category_id.name,
+                        'subject': incident.subject,
+                        'description': incident.description,
+                        'coordinate': incident.coordinate,
+                        'upvote_count': incident.upvote_count,
+                        'report_count': incident.report_count,
+                        'status': incident.status,
+                        'is_accepted_by_org': incident.is_accepted_by_org,
+                        'is_internal_for_org': incident.is_internal_for_org,
+                        'is_active': incident.is_active,
+                        'reported_by': incident.reported_by,
+                        'created_at': incident.created_at.isoformat(),
+                        'updated_at': incident.updated_at.isoformat(),
+                        'voters': list(incident.voters.values_list('_id', flat=True)),
+                        'images': list(incident.images.values_list('image', flat=True)),
+                        'distance': distance  
+                    }
+                    nearby_incidents.append(incident_data)
+
+            return JsonResponse({
+                'message': MESSAGES[lng].get('SUCCESS_MESSAGE_FOR_NEARBY_INCIDENTS'),
+                'data': nearby_incidents,
+                'error': False,
+                'status': HTTPStatus.OK
+            }, status=HTTPStatus.OK)
+
+        except Exception as e:
+            return JsonResponse({
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_FOR_NEARBY_INCIDENTS').format(str(e)),
+                'data': None,
+                'error': True,
+                'status': HTTPStatus.INTERNAL_SERVER_ERROR
+            }, status=HTTPStatus.INTERNAL_SERVER_ERROR)
