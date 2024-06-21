@@ -1,4 +1,3 @@
-# Replace with your User model import
 from django.contrib.auth import (
     get_user_model
 )
@@ -9,8 +8,10 @@ from core.utils import upload_file_to_s3
 from core.models import IncidentImage, Incident
 from core.models import IncidentCategory
 from django.shortcuts import get_object_or_404
+from django.contrib.gis.geos import Point
+from django.contrib.gis.db.models.functions import Distance
+from django.db.models import Q
 from http import HTTPStatus
-from .messages import MESSAGES
 
 
 # API Logic for Incident Category
@@ -275,3 +276,128 @@ class IncidentView(View):
             'error': False,
             'status': HTTPStatus.OK
         }, status=HTTPStatus.OK)
+
+
+class GetNearbyReportForOrg(View):
+    def get(self, request):
+        lng = request.lng
+        site_id = request.GET.get('id')
+        if not site_id:
+            return JsonResponse({
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_SITE_ID'),
+                'data': None,
+                'error': True,
+                'status': HTTPStatus.BAD_REQUEST
+            }, status=HTTPStatus.BAD_REQUEST)
+        try:
+            incidents = Incident.objects.filter(project_id=site_id)
+            incident_list = list(incidents.values())
+            return JsonResponse({
+                'message': MESSAGES[lng].get('SUCCESS_MESSAGE_INCIDENTS_RETRIEVED'),
+                'data': incident_list,
+                'error': False,
+                'status': HTTPStatus.OK
+            }, status=HTTPStatus.OK)
+        except Exception as e:
+            return JsonResponse({
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_RETRIEVE_INCIDENTS').format(e),
+                'data': None,
+                'error': True,
+                'status': HTTPStatus.INTERNAL_SERVER_ERROR
+            }, status=HTTPStatus.INTERNAL_SERVER_ERROR)
+
+class GetNearbyReportForUser(View):
+    def get(self, request):
+        lng = request.lng
+        latitude = request.GET.get('lat')
+        longitude = request.GET.get('lng')
+        radius = request.GET.get('r')
+        if not latitude or not longitude or not radius:
+            return JsonResponse({
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_COORDINATES'),
+                'data': None,
+                'error': True,
+                'status': HTTPStatus.BAD_REQUEST
+            }, status=HTTPStatus.BAD_REQUEST)
+        try:
+            # Implement the logic to filter incidents by coordinates and radius
+            incidents = Incident.objects.all()  # Replace with actual filtering logic
+            incident_list = list(incidents.values())
+            return JsonResponse({
+                'message': MESSAGES[lng].get('SUCCESS_MESSAGE_INCIDENTS_RETRIEVED'),
+                'data': incident_list,
+                'error': False,
+                'status': HTTPStatus.OK
+            }, status=HTTPStatus.OK)
+        except Exception as e:
+            return JsonResponse({
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_RETRIEVE_INCIDENTS').format(e),
+                'data': None,
+                'error': True,
+                'status': HTTPStatus.INTERNAL_SERVER_ERROR
+            }, status=HTTPStatus.INTERNAL_SERVER_ERROR)
+
+class FilterReportsForUser(View):
+    def get(self, request):
+        lng = request.lng
+        filter_by = request.GET.get('filter_by')
+        if filter_by not in ['ALL', 'ACTIVE', 'PENDING', 'FIXING', 'RESOLVED']:
+            return JsonResponse({
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_FILTER'),
+                'data': None,
+                'error': True,
+                'status': HTTPStatus.BAD_REQUEST
+            }, status=HTTPStatus.BAD_REQUEST)
+        try:
+            if filter_by == 'ALL':
+                incidents = Incident.objects.all()
+            else:
+                incidents = Incident.objects.filter(status=filter_by)
+            incident_list = list(incidents.values())
+            return JsonResponse({
+                'message': MESSAGES[lng].get('SUCCESS_MESSAGE_INCIDENTS_RETRIEVED'),
+                'data': incident_list,
+                'error': False,
+                'status': HTTPStatus.OK
+            }, status=HTTPStatus.OK)
+        except Exception as e:
+            return JsonResponse({
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_RETRIEVE_INCIDENTS').format(e),
+                'data': None,
+                'error': True,
+                'status': HTTPStatus.INTERNAL_SERVER_ERROR
+            }, status=HTTPStatus.INTERNAL_SERVER_ERROR)
+
+class FilterReportsForOrg(View):
+    def get(self, request):
+        lng = request.lng
+        filter_by = request.GET.get('filter_by')
+        if filter_by not in ['MY', 'SITE', 'CIVILIAN']:
+            return JsonResponse({
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_FILTER'),
+                'data': None,
+                'error': True,
+                'status': HTTPStatus.BAD_REQUEST
+            }, status=HTTPStatus.BAD_REQUEST)
+        try:
+            if filter_by == 'MY':
+                # Replace `current_org_id` with the actual current organization ID
+                incidents = Incident.objects.filter(organization_id=current_org_id)
+            elif filter_by == 'SITE':
+                incidents = Incident.objects.filter(is_internal_for_org=True)
+            elif filter_by == 'CIVILIAN':
+                incidents = Incident.objects.filter(is_internal_for_org=False)
+            incident_list = list(incidents.values())
+            return JsonResponse({
+                'message': MESSAGES[lng].get('SUCCESS_MESSAGE_INCIDENTS_RETRIEVED'),
+                'data': incident_list,
+                'error': False,
+                'status': HTTPStatus.OK
+            }, status=HTTPStatus.OK)
+        except Exception as e:
+            return JsonResponse({
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_RETRIEVE_INCIDENTS').format(e),
+                'data': None,
+                'error': True,
+                'status': HTTPStatus.INTERNAL_SERVER_ERROR
+            }, status=HTTPStatus.INTERNAL_SERVER_ERROR)

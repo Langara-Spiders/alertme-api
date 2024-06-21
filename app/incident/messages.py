@@ -10,5 +10,10 @@ MESSAGES = {
         'ALREADY_VOTED_MESSAGE': 'You have already voted on this incident.',
         'SUCCESS_REPORT_MESSAGE': 'Incident reported successfully',
         'SUCCESS_MESSAGE_INCIDENT_DELETED': 'Incident has been deleted',
+        'ERROR_MESSAGE_INVALID_SITE_ID': 'Site ID is required.',
+        'ERROR_MESSAGE_INVALID_COORDINATES': 'Invalid or missing coordinates.',
+        'ERROR_MESSAGE_RETRIEVE_INCIDENTS': 'Error retrieving incidents: {}',
+        'SUCCESS_MESSAGE_INCIDENTS_RETRIEVED': 'Incidents retrieved successfully.',
+        'ERROR_MESSAGE_INVALID_FILTER': 'Invalid filter provided.'
     },
 }
