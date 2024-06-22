@@ -11,6 +11,7 @@ from .messages import MESSAGES
 import boto3
 from botocore.exceptions import ClientError
 import uuid
+from math import radians, cos, sin, asin, sqrt
 
 # AWS S3 Configurations
 AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
@@ -29,8 +30,6 @@ s3_client = boto3.client(
 def upload_file_to_s3(file_obj):
     try:
         # Generate unique filename for S3
-        # file_name = f"{uuid.uuid4()}-{file_obj.name}"
-        # file_name = f"{uuid_hex}-{file_obj.name}"
         file_name = f"{uuid.uuid4()}"
 
         # Upload file to S3 bucket
@@ -96,3 +95,20 @@ def decode_jwt_token(token, lng):
             'error': True,
             'status': HTTPStatus.UNAUTHORIZED
         }
+
+
+def haversine(lon1, lat1, lon2, lat2):
+    """
+    Calculate the great-circle distance in kilometers between two points
+    on the earth (specified in decimal degrees).
+    """
+    # Convert decimal degrees to radians
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+
+    # Haversine formula
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+    c = 2 * asin(sqrt(a))
+    r = 6371  # Radius of Earth in kilometers. Use 3956 for miles.
+    return c * r
