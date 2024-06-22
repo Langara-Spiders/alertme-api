@@ -5,12 +5,11 @@ from django.http import JsonResponse
 from django.views import View
 import json
 from core.utils import upload_file_to_s3
-from core.models import IncidentImage, Incident
-from core.models import IncidentCategory
+from core.models import IncidentImage, Incident, IncidentCategory
 from django.shortcuts import get_object_or_404
 from http import HTTPStatus
 from .messages import MESSAGES
-from math import radians, cos, sin, asin, sqrt
+from core.utils import haversine
 
 # API Logic for Incident Category
 
@@ -119,9 +118,7 @@ class IncidentView(View):
             elif user_id:
                 user_incidents = Incident.objects.filter(user_id=user_id)
                 if filter_by:
-                    user_incidents = user_incidents.filter(
-                        status=filter_by
-                    )
+                    user_incidents = user_incidents.filter(status=filter_by)
                 incident_list = []
                 for incident in user_incidents:
                     incident_data = {
@@ -368,24 +365,6 @@ class IncidentView(View):
             status=HTTPStatus.OK,
         )
 
-    def haversine(self, lon1, lat1, lon2, lat2):
-        """
-        Calculate the great-circle distance in kilometers between two points
-        on the earth (specified in decimal degrees)
-        """
-        # Convert decimal degrees to radians
-
-        lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
-
-        # Haversine formula
-
-        dlon = lon2 - lon1
-        dlat = lat2 - lat1
-        a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
-        c = 2 * asin(sqrt(a))
-        r = 6371  # Radius of Earth in kilometers. Use 3956 for miles.
-        return c * r
-
     def get_nearby(self, request):
         lng = request.lng
         try:
@@ -400,7 +379,7 @@ class IncidentView(View):
                 incident_lat, incident_lng = map(
                     float, incident.coordinate.split(",")
                 )
-                distance = self.haversine(
+                distance = haversine(
                     user_lng, user_lat, incident_lng, incident_lat
                 )
                 if distance <= radius:
