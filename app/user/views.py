@@ -12,6 +12,7 @@ from django.contrib.auth import (
     get_user_model
 )
 from core.utils import generate_jwt_token
+from core.models import Project
 from .messages import MESSAGES
 
 
@@ -48,13 +49,13 @@ class LoginView(View):
                 'error': True,
                 'status': HTTPStatus.UNAUTHORIZED
             }, status=HTTPStatus.UNAUTHORIZED)
-
+        
         # Generate JWT token
         token = generate_jwt_token(
             _id=str(user._id),
             name=user.name,
             email=user.email,
-            project_id=user.project_id,
+            project_id=str(user.project_id._id),
             is_staff=user.is_staff,
         )
 
