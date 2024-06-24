@@ -20,11 +20,18 @@ class LoginView(View):
         lng = request.lng
         try:
             data = json.loads(request.body)
+
+            client id = ''
+            if data.get('os') == 'ios':
+                client_id =  os.environ.get('GOOGLE_CLIENT_ID_IOS')
+            else:
+                client_id =  os.environ.get('GOOGLE_CLIENT_ID_ANDROID')
+                
             # Check if OAuth token was valid
             token_info = id_token.verify_oauth2_token(
                 data.get('token'),
                 google_requests.Request(),
-                os.environ.get('GOOGLE_CLIENT_ID')
+                client_id
             )
 
         except ValueError as e:
