@@ -8,6 +8,7 @@ import json
 from core.utils import upload_file_to_s3
 from core.models import IncidentImage, Incident
 from core.models import IncidentCategory
+from core.models import Project
 from django.shortcuts import get_object_or_404
 from http import HTTPStatus
 from .messages import MESSAGES
@@ -41,6 +42,137 @@ class IncidentCategoryView(View):
                 'error': True,
                 'status': HTTPStatus.BAD_REQUEST
             }, status=HTTPStatus.BAD_REQUEST)
+
+
+class IncidentSiteView(View):
+    def get(self, request):
+        lng = request.lng
+        user_info = getattr(request, 'user_info', None)
+
+        if user_info is None:
+            return JsonResponse({
+                'message': MESSAGES[lng].get('USER_INFO_MISSING'),
+                'data': None,
+                'error': True,
+                'status': HTTPStatus.BAD_REQUEST
+            }, status=HTTPStatus.BAD_REQUEST)
+
+        try:
+            incident_id = request.GET.get('id')
+            filter_by = request.GET.get('filter_by')
+
+            if incident_id:
+                incident = get_object_or_404(Incident, _id=incident_id)
+                incident_data = self.format_incident_data(incident)
+                return JsonResponse({
+                    'message': MESSAGES[lng]
+                    .get('SUCCESS_MESSAGE_FOR_INCIDENT_SITE'),
+                    'data': incident_data,
+                    'user_info': user_info,
+                    'error': False,
+                    'status': HTTPStatus.OK
+                }, status=HTTPStatus.OK)
+
+            incidents = Incident.objects.all()
+
+            if filter_by:
+                if filter_by == 'ALL':
+                    incidents = incidents.filter(is_active=True)
+                    if user_info.get('project_id'):
+                        project_id = user_info['project_id']
+                        user_project = get_object_or_404(
+                            Project, _id=project_id)
+                        incidents = self.apply_radius_filter(
+                            incidents, user_project.coordinate, 6)
+                elif filter_by == 'SITE':
+                    if not user_info.get('project_id'):
+                        return JsonResponse({
+                            'message': MESSAGES[lng].get('NO_USER_PROJECT'),
+                            'error': True,
+                            'status': HTTPStatus.BAD_REQUEST
+                        }, status=HTTPStatus.BAD_REQUEST)
+
+                    project_id = user_info['project_id']
+                    incidents = incidents.filter(
+                        is_active=True,
+                        reported_by='ORG',
+                        user_id__project_id=project_id,
+                    )
+                elif filter_by == 'CIVILIAN':
+                    incidents = incidents.filter(
+                    is_active=True, reported_by='USER')
+                    if user_info.get('project_id'):
+                        project_id = user_info['project_id']
+                        user_project = get_object_or_404(
+                            Project, _id=project_id)
+                        incidents = self.apply_radius_filter(
+                            incidents, user_project.coordinate, 6)
+                else:
+                    return JsonResponse({
+                        'message': MESSAGES[lng].get('INVALID_FILTER'),
+                        'error': True,
+                        'status': HTTPStatus.BAD_REQUEST
+                    }, status=HTTPStatus.BAD_REQUEST)
+
+            incidents_list = [
+                self.format_incident_data(incident) for incident in incidents
+            ]
+
+            return JsonResponse({
+                'message': MESSAGES[lng].get(
+                    'SUCCESS_MESSAGE_FOR_INCIDENT_SITE'),
+                'data': incidents_list,
+                'error': False,
+                'status': HTTPStatus.OK
+            }, status=HTTPStatus.OK)
+
+        except Exception as e:
+            print(f"Error: {str(e)}")
+            return JsonResponse({
+                'message': MESSAGES[lng].get('ERROR_REPORT_MESSAGE')
+                .format(str(e)),
+                'data': None,
+                'error': True,
+                'status': HTTPStatus.INTERNAL_SERVER_ERROR
+            }, status=HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    def apply_radius_filter(self, incidents, project_coordinate, radius_km):
+        user_lat = project_coordinate['lat']
+        user_lng = project_coordinate['lng']
+        nearby_incidents = []
+
+        for incident in incidents:
+            incident_lat, incident_lng = map(
+                float, incident.coordinate.split(","))
+            distance = haversine(
+                user_lng, user_lat, incident_lng, incident_lat)
+            if distance <= radius_km:
+                nearby_incidents.append(incident)
+
+        return nearby_incidents
+
+    def format_incident_data(self, incident):
+        return {
+            "id": str(incident._id),
+            "user_id": str(incident.user_id._id),
+            "user_reported": str(incident.user_id.name),
+            "incident_category_id": str(incident.incident_category_id._id),
+            "incident_category_name": incident.incident_category_id.name,
+            "subject": incident.subject,
+            "description": incident.description,
+            "coordinate": incident.coordinate,
+            "upvote_count": incident.upvote_count,
+            "report_count": incident.report_count,
+            "status": incident.status,
+            "is_accepted_by_org": incident.is_accepted_by_org,
+            "is_internal_for_org": incident.is_internal_for_org,
+            "is_active": incident.is_active,
+            "reported_by": incident.reported_by,
+            "created_at": incident.created_at.isoformat(),
+            "updated_at": incident.updated_at.isoformat(),
+            "voters": list(incident.voters.values_list("_id", flat=True)),
+            "images": list(incident.images.values_list("image", flat=True)),
+        }
 
 
 # API Logic Incident reports
