@@ -112,3 +112,27 @@ def haversine(lon1, lat1, lon2, lat2):
     c = 2 * asin(sqrt(a))
     r = 6371  # Radius of Earth in kilometers. Use 3956 for miles.
     return c * r
+
+
+def format_incident_data(self, incident):
+    return {
+        "id": str(incident._id),
+        "user_id": str(incident.user_id._id),
+        "user_reported": str(incident.user_id.name),
+        "incident_category_id": str(incident.incident_category_id._id),
+        "incident_category_name": incident.incident_category_id.name,
+        "subject": incident.subject,
+        "description": incident.description,
+        "coordinate": incident.coordinate,
+        "upvote_count": incident.upvote_count,
+        "report_count": incident.report_count,
+        "status": incident.status,
+        "is_accepted_by_org": incident.is_accepted_by_org,
+        "is_internal_for_org": incident.is_internal_for_org,
+        "is_active": incident.is_active,
+        "reported_by": incident.reported_by,
+        "created_at": incident.created_at.isoformat(),
+        "updated_at": incident.updated_at.isoformat(),
+        "voters": list(incident.voters.values_list("_id", flat=True)),
+        "images": list(incident.images.values_list("image", flat=True)),
+    }

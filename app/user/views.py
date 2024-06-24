@@ -54,7 +54,7 @@ class LoginView(View):
             _id=str(user._id),
             name=user.name,
             email=user.email,
-            project_id=user.project_id,
+            project_id=str(user.project_id._id),
             is_staff=user.is_staff,
         )
 
@@ -92,7 +92,7 @@ class SignupView(View):
                 _id=str(user._id),
                 name=user.name,
                 email=user.email,
-                project_id=user.project_id,
+                project_id=str(user.project_id._id),
                 is_staff=user.is_staff,
             )
 
