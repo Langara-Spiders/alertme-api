@@ -8,6 +8,7 @@ import json
 from core.utils import upload_file_to_s3
 from core.models import IncidentImage, Incident
 from core.models import IncidentCategory
+from core.models import Project
 from django.shortcuts import get_object_or_404
 from http import HTTPStatus
 from .messages import MESSAGES
@@ -72,10 +73,17 @@ class IncidentSiteView(View):
                 }, status=HTTPStatus.OK)
 
             incidents = Incident.objects.all()
+            print(f"Initial incidents count: {incidents.count()}")
 
             if filter_by:
+                print(f"Filter by: {filter_by}")
                 if filter_by == 'ALL':
                     incidents = incidents.filter(is_active=True)
+                    if user_info.get('project_id'):
+                        project_id = user_info['project_id']
+                        user_project = get_object_or_404(Project, _id=project_id)
+                        print(f"User project coordinates: {user_project.coordinate}")
+                        incidents = self.apply_radius_filter(incidents, user_project.coordinate, 6)
                 elif filter_by == 'SITE':
                     if not user_info.get('project_id'):
                         return JsonResponse({
@@ -83,14 +91,13 @@ class IncidentSiteView(View):
                             'error': True,
                             'status': HTTPStatus.BAD_REQUEST
                         }, status=HTTPStatus.BAD_REQUEST)
-
+                    
                     project_id = user_info['project_id']
                     incidents = incidents.filter(
                         is_active=True,
                         reported_by='ORG',
                         user_id__project_id=project_id,
                     )
-
                 elif filter_by == 'CIVILIAN':
                     incidents = incidents.filter(is_active=True, reported_by='USER')
                 else:
@@ -100,6 +107,7 @@ class IncidentSiteView(View):
                         'status': HTTPStatus.BAD_REQUEST
                     }, status=HTTPStatus.BAD_REQUEST)
 
+            print(f"Filtered incidents count: {len(incidents)}")
             incidents_list = [self.format_incident_data(incident) for incident in incidents]
 
             return JsonResponse({
@@ -111,6 +119,7 @@ class IncidentSiteView(View):
             }, status=HTTPStatus.OK)
         
         except Exception as e:
+            print(f"Error: {str(e)}")
             return JsonResponse({
                 'message': MESSAGES[lng].get('ERROR_REPORT_MESSAGE').format(str(e)),
                 'data': None,
@@ -118,6 +127,27 @@ class IncidentSiteView(View):
                 'error': True,
                 'status': HTTPStatus.INTERNAL_SERVER_ERROR
             }, status=HTTPStatus.INTERNAL_SERVER_ERROR)
+
+    def apply_radius_filter(self, incidents, project_coordinate, radius_km):
+        user_lat = project_coordinate['lat']
+        user_lng = project_coordinate['lng']
+        nearby_incidents = []
+
+        print(f"Applying radius filter: {radius_km} km from ({user_lat}, {user_lng})")
+
+        for incident in incidents:
+            print(f"Incident coordinate (before split): {incident.coordinate}")
+            incident_lat, incident_lng = map(float, incident.coordinate.split(","))
+            print(f"Incident parsed coordinates: lat={incident_lat}, lng={incident_lng}")
+            distance = haversine(user_lng, user_lat, incident_lng, incident_lat)
+            print(f"Calculated distance: {distance} km")
+            if distance <= radius_km:
+                print(f"Incident {incident._id} is within {distance} km")
+                nearby_incidents.append(incident)
+            else:
+                print(f"Incident {incident._id} is {distance} km away and filtered out")
+
+        return nearby_incidents
 
     def format_incident_data(self, incident):
         return {
@@ -141,7 +171,6 @@ class IncidentSiteView(View):
             "voters": list(incident.voters.values_list("_id", flat=True)),
             "images": list(incident.images.values_list("image", flat=True)),
         }
-
 
 # API Logic Incident reports
 class IncidentView(View):
