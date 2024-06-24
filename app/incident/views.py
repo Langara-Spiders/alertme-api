@@ -100,7 +100,7 @@ class IncidentSiteView(View):
                     )
                 elif filter_by == 'CIVILIAN':
                     incidents = incidents.filter(
-                    is_active=True, reported_by='USER')
+                        is_active=True, reported_by='USER')
                     if user_info.get('project_id'):
                         project_id = user_info['project_id']
                         user_project = get_object_or_404(
