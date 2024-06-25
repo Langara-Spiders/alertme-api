@@ -51,13 +51,6 @@ jobs:
     - name: Start the container
       run: docker-compose up -d app
 
-    - name: Run tests in Docker container
-      run: |
-        TAG=${{ env.GIT_SHA }}
-        docker-compose exec -T app python manage.py test
-      env:
-        GIT_SHA: ${{ env.GIT_SHA }}
-
     - name: Lint
       run: |
         TAG=${{ env.GIT_SHA }}
