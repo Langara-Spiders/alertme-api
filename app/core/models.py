@@ -52,7 +52,7 @@ class Project(models.Model):
     address = models.JSONField(default=dict)
     description = models.CharField(max_length=500)
     coordinate = models.JSONField(default=dict)
-    organization_id = models.ForeignKey(
+    organization = models.ForeignKey(
         Organization, on_delete=models.PROTECT, null=False
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -94,7 +94,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     _id = models.UUIDField(
         primary_key=True, default=uuid.uuid4, editable=False)
-    picture = models.URLField(max_length=200, blank=True)
+    picture = models.FileField(upload_to="user_images/", blank=True)
     name = models.CharField(max_length=25)
     email = models.EmailField(max_length=255, unique=True)
     phone = models.CharField(max_length=15)
@@ -103,15 +103,20 @@ class User(AbstractBaseUser, PermissionsMixin):
     notification = models.JSONField(default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    project_id = models.ForeignKey(
+    project = models.ForeignKey(
         Project,
         on_delete=models.SET_NULL,
         null=True,
         blank=True
     )
+    points = models.IntegerField(default=0)
+    password = models.CharField(max_length=128, blank=True, null=True)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_superuser = models.BooleanField(default=False)
+
+    def get_project_id(self):
+        return self.project.id if self.project else ''
 
     class Meta:
         ordering = ["name"]
