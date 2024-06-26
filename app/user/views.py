@@ -4,6 +4,9 @@ Views for the user API
 import os
 import json
 import uuid
+from itertools import chain
+from django.db.models import F, Window
+from django.db.models.functions import Rank
 from django.views import View
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -271,6 +274,67 @@ class ProfileView(View):
             print(e)
             return JsonResponse({
                 'message': MESSAGES[lng].get('ERROR_MESSAGE_UPDATE_USER'),
+                'data': None,
+                'error': True,
+                'status': HTTPStatus.INTERNAL_SERVER_ERROR
+            }, status=HTTPStatus.OK)
+
+
+class RewardView(View):
+    def get(self, request):
+        lng = request.lng
+        try:
+            # get authorized user info
+            user_info = request.user_info
+
+            user_rank = get_user_model().objects.annotate(
+                rank=Window(
+                    expression=Rank(),
+                    order_by=F('points').desc()
+                )
+            ).get(_id=user_info.get('_id'))
+
+            above_users = get_user_model().objects.annotate(
+                rank=Window(
+                    expression=Rank(),
+                    order_by=F('points').desc()
+                )
+            ).filter(points__gt=user_rank.points).order_by('-points')[:3]
+
+            below_users = get_user_model().objects.annotate(
+                rank=Window(
+                    expression=Rank(),
+                    order_by=F('points').desc()
+                )
+            ).filter(points__lt=user_rank.points).order_by('-points')[:20]
+
+            combined_users = list(chain(above_users, [user_rank], below_users))
+
+            user_json = []
+            for user in combined_users:
+                picture_url = ''
+
+                if user.picture:
+                    picture_url = user.picture.url
+
+                user_json.append({
+                    '_id': user._id,
+                    'picture': picture_url,
+                    'name': user.name,
+                    'points': user.points,
+                })
+
+            return JsonResponse({
+                'message': MESSAGES[lng].get('SUCCESS'),
+                'data': user_json,
+                'error': True,
+                'status': HTTPStatus.OK
+            }, status=HTTPStatus.OK)
+
+        except Exception as e:
+            print(e)
+            return JsonResponse({
+                'message': MESSAGES[lng].get('ERROR'),
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.INTERNAL_SERVER_ERROR
