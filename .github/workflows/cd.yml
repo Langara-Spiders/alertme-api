@@ -29,9 +29,6 @@ jobs:
         docker compose down
         docker system prune -a -f
 
-    - name: Build compose file
-      run: docker compose build
-
     - name: Start the containers
       run: docker compose up -d
 
