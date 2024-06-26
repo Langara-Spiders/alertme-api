@@ -40,9 +40,6 @@ jobs:
 
     - name: Print container logs for debugging
       run: docker logs alertme-api-container
-
-    - name: Cleanup .env file
-      run: rm .env
       
     - name: Show message on successful deployment
       if: success()
