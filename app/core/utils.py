@@ -102,28 +102,41 @@ def haversine(lon1, lat1, lon2, lat2):
     Calculate the great-circle distance in kilometers between two points
     on the earth (specified in decimal degrees).
     """
-    # Convert decimal degrees to radians
+    # convert decimal degrees to radians
     lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
 
-    # Haversine formula
+    # haversine formula
     dlon = lon2 - lon1
     dlat = lat2 - lat1
     a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
     c = 2 * asin(sqrt(a))
-    r = 6371  # Radius of Earth in kilometers. Use 3956 for miles.
+    r = 6371  # radius of earth in kilometers
+
     return c * r
 
 
-def format_incident_data(self, incident):
-    return {
+def format_incident_data(incident, distance=None):
+
+    voters_db_list = incident.voters.values_list('_id', 'name', 'picture')
+    voters = []
+
+    for voter in voters_db_list:
+        voters.append({
+            "id": str(voter[0]),
+            "name": voter[1],
+            "picture": voter[2],
+        })
+
+    incident = {
         "id": str(incident._id),
-        "user_id": str(incident.user_id._id),
-        "user_reported": str(incident.user_id.name),
-        "incident_category_id": str(incident.incident_category_id._id),
-        "incident_category_name": incident.incident_category_id.name,
+        "user_id": str(incident.user._id),
+        "user_name": str(incident.user.name),
+        "incident_category_id": str(incident.incident_category._id),
+        "incident_category_name": incident.incident_category.name,
         "subject": incident.subject,
         "description": incident.description,
         "coordinate": incident.coordinate,
+        "address": incident.address,
         "upvote_count": incident.upvote_count,
         "report_count": incident.report_count,
         "status": incident.status,
@@ -131,8 +144,13 @@ def format_incident_data(self, incident):
         "is_internal_for_org": incident.is_internal_for_org,
         "is_active": incident.is_active,
         "reported_by": incident.reported_by,
-        "created_at": incident.created_at.isoformat(),
-        "updated_at": incident.updated_at.isoformat(),
-        "voters": list(incident.voters.values_list("_id", flat=True)),
+        "created_at": incident.created_at,
+        "updated_at": incident.updated_at,
+        "voters": voters,
         "images": list(incident.images.values_list("image", flat=True)),
     }
+
+    if distance is not None:
+        incident["distance"] = distance
+
+    return incident

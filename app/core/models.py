@@ -13,7 +13,6 @@ from django.contrib.auth.models import (
 
 # Choices for the "status" field in the Incident model
 INCIDENT_STATUS_CHOICES = [
-    ("NONE", "None"),
     ("ACTIVE", "Active"),
     ("PENDING", "Pending"),
     ("FIXING", "Fixing"),
@@ -116,7 +115,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_superuser = models.BooleanField(default=False)
 
     def get_project_id(self):
-        return self.project.id if self.project else ''
+        return self.project._id if self.project else ''
 
     class Meta:
         ordering = ["name"]
@@ -145,7 +144,9 @@ class IncidentCategory(models.Model):
 
 # Model for storing incident images
 class IncidentImage(models.Model):
-    image = models.FileField(upload_to="incident_images")
+    _id = models.UUIDField(
+        primary_key=True, default=uuid.uuid4, editable=False)
+    image = models.FileField(upload_to="incident_images/")
 
     class Meta:
         db_table = "incident_images"
@@ -155,15 +156,17 @@ class IncidentImage(models.Model):
 class Incident(models.Model):
     _id = models.UUIDField(
         primary_key=True, default=uuid.uuid4, editable=False)
-    user_id = models.ForeignKey(User, on_delete=models.PROTECT)
+    user = models.ForeignKey(User, on_delete=models.PROTECT)
+    project = models.ForeignKey(Project, on_delete=models.PROTECT)
     images = models.ManyToManyField(
         IncidentImage, related_name="incidents", blank=True
     )
-    incident_category_id = models.ForeignKey(
+    incident_category = models.ForeignKey(
         IncidentCategory, on_delete=models.PROTECT)
     subject = models.CharField(max_length=30)
     description = models.CharField(max_length=200)
     coordinate = models.JSONField(default=dict)
+    address = models.JSONField(default=dict)
     upvote_count = models.IntegerField(default=0)
     report_count = models.IntegerField(default=0)
     status = models.CharField(
