@@ -24,18 +24,16 @@ jobs:
       run: |
         echo '${{ toJSON(secrets) }}' | jq -r 'keys[] as $k | "\($k)=\(.[$k])"' > .env
 
-    - name: Stop and remove existing container
+    - name: Stop and remove existing containers and prune unused data
       run: |
-        docker stop alertme-api-container || true
-        docker rm alertme-api-container || true
+        docker compose down
+        docker system prune -a -f
 
     - name: Build compose file
-      env:
-        DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}
-      run: docker compose build app
+      run: docker compose build
 
-    - name: Start the container
-      run: docker compose up -d app
+    - name: Start the containers
+      run: docker compose up -d
 
     - name: Wait for a few seconds to let the container start
       run: sleep 10
