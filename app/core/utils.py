@@ -150,6 +150,9 @@ def format_incident_data(incident, distance=None):
         "images": list(incident.images.values_list("image", flat=True)),
     }
 
+    if incident.user.picture:
+        incident["user_picture"] = incident.user.picture.url
+
     if distance is not None:
         incident["distance"] = distance
 
