@@ -118,6 +118,7 @@ def haversine(lon1, lat1, lon2, lat2):
 def format_incident_data(incident, distance=None):
 
     voters_db_list = incident.voters.values_list('_id', 'name', 'picture')
+    user = incident.user
     voters = []
 
     for voter in voters_db_list:
@@ -129,8 +130,8 @@ def format_incident_data(incident, distance=None):
 
     incident = {
         "id": str(incident._id),
-        "user_id": str(incident.user._id),
-        "user_name": str(incident.user.name),
+        "user_id": str(user._id),
+        "user_name": str(user.name),
         "incident_category_id": str(incident.incident_category._id),
         "incident_category_name": incident.incident_category.name,
         "subject": incident.subject,
@@ -150,8 +151,8 @@ def format_incident_data(incident, distance=None):
         "images": list(incident.images.values_list("image", flat=True)),
     }
 
-    if incident.user.picture:
-        incident["user_picture"] = incident.user.picture.url
+    if user.picture:
+        incident["user_picture"] = user.picture.url
 
     if distance is not None:
         incident["distance"] = distance
