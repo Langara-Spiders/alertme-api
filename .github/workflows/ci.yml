@@ -18,7 +18,7 @@ jobs:
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-      
+
     - name: Login Dockerhub
       env:
         DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}
@@ -56,7 +56,7 @@ jobs:
         TAG=${{ env.GIT_SHA }}
         docker-compose exec -T app flake8
       env:
-        GIT_SHA: ${{ env.GIT_SHA }} 
+        GIT_SHA: ${{ env.GIT_SHA }}
 
     - name: Push Docker image if enabled
       if: success()
@@ -72,4 +72,4 @@ jobs:
         fi
       env:
         TAG: ${{ env.GIT_SHA }}
-        DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}} 
+        DOCKER_USERNAME: ${{secrets.DOCKERHUB_USER}}

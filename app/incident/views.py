@@ -1,5 +1,6 @@
 # Replace with your User model import
 import json
+import uuid
 from django.contrib.auth import (
     get_user_model
 )
@@ -9,6 +10,7 @@ from core.models import (
     Incident,
     IncidentCategory,
     Project,
+    IncidentImage,
 )
 from http import HTTPStatus
 from .messages import MESSAGES
@@ -193,7 +195,7 @@ class IncidentReportView(View):
             incident_lng = float(coordinate.get('lng'))
             address = report.get('address')
             is_internal_for_org = report.get('is_internal_for_org', False)
-            # pictures = request.FILES.getlist('pictures')
+            pictures = request.FILES.getlist('pictures')[:3]
             nearest_project = ''
 
             user = get_user_model().objects\
@@ -237,16 +239,6 @@ class IncidentReportView(View):
                         nearest_project_distance = distance
                         nearest_project = project
 
-            # loop over images if present
-            # images = []
-            # for picture in pictures:
-            #     incident_image = IncidentImage()
-            #     incident_image.image = picture
-            #     incident_image.image.name = picture.name
-
-            #     incident_image.save()
-            #     images.append(incident_image)
-
             incident = Incident.objects.create(
                 user=user,
                 project=nearest_project,
@@ -257,6 +249,20 @@ class IncidentReportView(View):
                 address=address,
                 is_internal_for_org=is_internal_for_org
             )
+
+            # loop over images if present
+            images = []
+            for picture in pictures:
+                incident_image = IncidentImage()
+                incident_image.image = picture
+                incident_image.image.name = f'{uuid.uuid4()}_{picture.name}'
+
+                incident_image.save()
+                images.append(incident_image)
+
+            # if images are present
+            if images:
+                incident.images.set(images)
 
             incident = format_incident_data(incident)
 
@@ -338,17 +344,26 @@ class IncidentUserView(View):
 
         try:
             filter_by = request.GET.get('filter_by', None)
+            user_lat = float(request.GET.get("lat"))
+            user_lng = float(request.GET.get("lng"))
 
             incidents = Incident.objects.all()\
-                .filter(user___id=user_info.get('_id'), is_active=True)
+                .filter(user___id=user_info.get('_id'))
 
             if filter_by is not None:
                 incidents = incidents.filter(status=filter_by)
 
             user_incidents = []
             for incident in incidents:
+                incident_lat = incident.coordinate.get('lat')
+                incident_lng = incident.coordinate.get('lng')
+
+                distance = haversine(
+                    user_lng, user_lat, incident_lng, incident_lat
+                )
+
                 user_incidents\
-                    .append(format_incident_data(incident))
+                    .append(format_incident_data(incident, distance))
 
             return JsonResponse({
                 "message": MESSAGES[lng].get(
