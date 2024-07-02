@@ -15,9 +15,14 @@ from http import HTTPStatus
 from django.contrib.auth import (
     get_user_model
 )
+from core.models import (
+    Incident
+)
 from core.utils import generate_jwt_token
 from .messages import MESSAGES
 
+
+CONFIRMED_REPORTS_PER_LEVEL = 25
 
 client_id = {
     'web': 'GOOGLE_CLIENT_ID',
@@ -283,10 +288,40 @@ class ProfileView(View):
 class RewardView(View):
     def get(self, request):
         lng = request.lng
-        try:
-            # get authorized user info
-            user_info = request.user_info
+        user_info = request.user_info
 
+        try:
+            # get top three users based on points
+            top_users_qs = get_user_model().objects\
+                .order_by('-points', 'name')[:3]
+
+            top_users = []
+            for user in top_users_qs:
+                top_users.append({
+                    'id': user._id,
+                    'name': user.name,
+                    'points': user.points,
+                    'picture': user.picture.url if user.picture else ''
+                })
+
+            user_incidents_count = Incident.objects\
+                .filter(user___id=user_info.get('_id'), is_active=True)\
+                .exclude(status__in=['ACTIVE', 'REJECTED']).count()
+
+            user = get_user_model().objects\
+                .filter(_id=user_info.get('_id'), is_active=True).first()
+
+            user_level = (user.points // CONFIRMED_REPORTS_PER_LEVEL) + 1
+
+            user_details = {
+                'id': user._id,
+                'name': user.name,
+                'points': user.points,
+                'level': user_level,
+                'confirmed_issues': user_incidents_count,
+            }
+
+            # leaderboard
             user_rank = get_user_model().objects.annotate(
                 rank=Window(
                     expression=Rank(),
@@ -310,23 +345,22 @@ class RewardView(View):
 
             combined_users = list(chain(above_users, [user_rank], below_users))
 
-            user_json = []
+            leaderboard = []
             for user in combined_users:
-                picture_url = ''
-
-                if user.picture:
-                    picture_url = user.picture.url
-
-                user_json.append({
+                leaderboard.append({
                     '_id': user._id,
-                    'picture': picture_url,
+                    'picture': user.picture.url if user.picture else '',
                     'name': user.name,
                     'points': user.points,
                 })
 
             return JsonResponse({
                 'message': MESSAGES[lng].get('SUCCESS'),
-                'data': user_json,
+                'data': {
+                    'user_details': user_details,
+                    'top_users': top_users,
+                    'leaderboard': leaderboard
+                },
                 'error': True,
                 'status': HTTPStatus.OK
             }, status=HTTPStatus.OK)
