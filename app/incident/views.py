@@ -439,3 +439,60 @@ class IncidentSiteView(View):
                 'error': True,
                 'status': HTTPStatus.INTERNAL_SERVER_ERROR
             }, status=HTTPStatus.OK)
+
+    def put(self, request, *args, **kwargs):
+        try:
+            lng = request.lng
+            status = request.GET.get('status')
+            incident_id = request.GET.get('id')
+
+            if not status or not incident_id:
+                return JsonResponse({
+                    'message': MESSAGES[lng].get(
+                        'ERROR_MESSAGE_ID_NOT_PROVIDED'),
+                    'error': True
+                }, status=400)
+
+            if status not in ['PENDING', 'FIXING', 'RESOLVED', 'REJECTED']:
+                return JsonResponse({
+                    'message': MESSAGES[lng].get(
+                        'ERROR_MESSAGE_INVALID_STATUS').format(status),
+                    'error': True
+                }, status=400)
+
+            try:
+                incident = Incident.objects.get(_id=incident_id)
+            except Incident.DoesNotExist:
+                return JsonResponse({
+                    'message': MESSAGES[lng].get(
+                        'INCIDENT_NOT_FOUND').format(incident_id),
+                    'error': True
+                }, status=404)
+
+            if status == 'PENDING':
+                incident.is_accepted_by_org = True
+                incident.status = 'PENDING'
+                success_message = MESSAGES[lng].get('SUCCESS_MESSAGE_PENDING')
+            elif status == 'FIXING':
+                incident.status = 'FIXING'
+                success_message = MESSAGES[lng].get('SUCCESS_MESSAGE_FIXING')
+            elif status == 'RESOLVED':
+                incident.status = 'RESOLVED'
+                success_message = MESSAGES[lng].get('SUCCESS_MESSAGE_RESOLVED')
+            elif status == 'REJECTED':
+                incident.is_active = False
+                incident.status = 'REJECTED'
+                success_message = MESSAGES[lng].get('SUCCESS_MESSAGE_REJECTED')
+
+            incident.save()
+
+            return JsonResponse({
+                'message': success_message,
+                'error': False
+            }, status=200)
+
+        except Exception:
+            return JsonResponse({
+                'message': MESSAGES[lng].get('ERROR_MESSAGE_UPDATE_FAILED'),
+                'error': True
+            }, status=500)
