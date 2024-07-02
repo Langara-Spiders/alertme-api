@@ -30,7 +30,7 @@ s3_client = boto3.client(
 def upload_file_to_s3(file_obj):
     try:
         # Generate unique filename for S3
-        file_name = f"{uuid.uuid4()}"
+        file_name = f'{uuid.uuid4()}'
 
         # Upload file to S3 bucket
         s3_client.upload_fileobj(
@@ -41,8 +41,8 @@ def upload_file_to_s3(file_obj):
 
         # Return the URL of the uploaded file
         file_url = (
-            f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}."
-            f"amazonaws.com/{file_name}"
+            f'https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.'
+            f'amazonaws.com/{file_name}'
         )
 
         return file_url
@@ -117,44 +117,48 @@ def haversine(lon1, lat1, lon2, lat2):
 
 def format_incident_data(incident, distance=None):
 
-    voters_db_list = incident.voters.values_list('_id', 'name', 'picture')
+    images_db_list = incident.images.all()
+    voters_db_list = incident.voters.all()[:3]
+
     user = incident.user
+    images = []
     voters = []
+
+    for incident_image in images_db_list:
+        images.append(incident_image.image.url)
 
     for voter in voters_db_list:
         voters.append({
-            "id": str(voter[0]),
-            "name": voter[1],
-            "picture": voter[2],
+            'id': str(voter._id),
+            'name': voter.name,
+            'picture': voter.picture.url if voter.picture else ''
         })
 
     incident = {
-        "id": str(incident._id),
-        "user_id": str(user._id),
-        "user_name": str(user.name),
-        "incident_category_id": str(incident.incident_category._id),
-        "incident_category_name": incident.incident_category.name,
-        "subject": incident.subject,
-        "description": incident.description,
-        "coordinate": incident.coordinate,
-        "address": incident.address,
-        "upvote_count": incident.upvote_count,
-        "report_count": incident.report_count,
-        "status": incident.status,
-        "is_accepted_by_org": incident.is_accepted_by_org,
-        "is_internal_for_org": incident.is_internal_for_org,
-        "is_active": incident.is_active,
-        "reported_by": incident.reported_by,
-        "created_at": incident.created_at,
-        "updated_at": incident.updated_at,
-        "voters": voters,
-        "images": list(incident.images.values_list("image", flat=True)),
+        'id': str(incident._id),
+        'user_id': str(user._id),
+        'user_name': str(user.name),
+        'user_picture': user.picture.url if user.picture else '',
+        'category_id': str(incident.incident_category._id),
+        'category_name': incident.incident_category.name,
+        'category_icon': incident.incident_category.icon.url
+        if incident.incident_category.icon else '',
+        'subject': incident.subject,
+        'description': incident.description,
+        'coordinate': incident.coordinate,
+        'address': incident.address,
+        'distance': distance,
+        'upvote_count': incident.upvote_count,
+        'report_count': incident.report_count,
+        'status': incident.status,
+        'is_accepted_by_org': incident.is_accepted_by_org,
+        'is_internal_for_org': incident.is_internal_for_org,
+        'is_active': incident.is_active,
+        'reported_by': incident.reported_by,
+        'created_at': incident.created_at,
+        'updated_at': incident.updated_at,
+        'voters': voters,
+        'images': images,
     }
-
-    if user.picture:
-        incident["user_picture"] = user.picture.url
-
-    if distance is not None:
-        incident["distance"] = distance
 
     return incident
