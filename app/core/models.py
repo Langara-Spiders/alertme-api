@@ -17,6 +17,7 @@ INCIDENT_STATUS_CHOICES = [
     ("PENDING", "Pending"),
     ("FIXING", "Fixing"),
     ("RESOLVED", "Resolved"),
+    ("REJECTED", "Rejected"),
 ]
 
 

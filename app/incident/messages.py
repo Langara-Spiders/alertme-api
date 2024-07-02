@@ -15,6 +15,15 @@ MESSAGES = {
         'ERROR_MESSAGE_FOR_INCIDENT_CATEGORY': 'Unable to retrieve incident categories',
         'ERROR_REPORT_MESSAGE': 'Unable to post the incident',
         'ERROR_VOTE_MESSAGE': 'Unable to Vote the incident',
-        'SUCCESS_MESSAGE_TO_RETRIEVE_MY_INCIDENTS': 'All incidents retrieved successfully'
+        'SUCCESS_MESSAGE_TO_RETRIEVE_MY_INCIDENTS': 'All incidents retrieved successfully',     
+        'ERROR_MESSAGE_ID_NOT_PROVIDED': 'Incident ID is required.',
+        'ERROR_MESSAGE_INVALID_STATUS': 'Invalid status provided: {}',
+        'INCIDENT_NOT_FOUND': 'Incident with ID {} not found.',
+        'SUCCESS_MESSAGE_PENDING': 'Incident status changed to PENDING.',
+        'SUCCESS_MESSAGE_FIXING': 'Incident status changed to FIXING.',
+        'SUCCESS_MESSAGE_RESOLVED': 'Incident status changed to RESOLVED.',
+        'SUCCESS_MESSAGE_REJECTED': 'Incident status changed to REJECTED.',
+        'ERROR_MESSAGE_UPDATE_FAILED': 'Failed to update incident status.',
+        'ERROR_MESSAGE_SERVER_ERROR': 'Internal server error occurred.'
     },
 }
