@@ -159,3 +159,9 @@ MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
 AUTH_USER_MODEL = 'core.User'
 
 APPEND_SLASH = False
+
+# Set the maximum size for uploaded data (in bytes)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024  # 25 MB
+
+# Set the maximum size for uploaded files (in bytes)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024  # 25 MB
