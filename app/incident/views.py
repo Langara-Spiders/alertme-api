@@ -1,30 +1,44 @@
-# Replace with your User model import
 import json
-import uuid
+import threading
 from django.contrib.auth import (
     get_user_model
 )
 from django.http import JsonResponse
 from django.views import View
 from core.models import (
+    INCIDENT_STATUS_CHOICES,
     Incident,
     IncidentCategory,
     Project,
     IncidentImage,
 )
 from http import HTTPStatus
-from .messages import MESSAGES
-from core.utils import haversine
-from core.utils import format_incident_data
+from core.messages import (
+    NotificationMessages,
+    Messages
+)
+from core.utils import (
+    format_incident_data,
+    create_notification,
+    create_notification_stream,
+)
+from django.contrib.gis.db.models.functions import Distance
+from django.contrib.gis.geos import Point
+from django.contrib.gis.measure import D
 
 
+ALL_INCIDENT_STATUS = [s[0] for s in INCIDENT_STATUS_CHOICES]
+
+
+# Get all Issue categories
 class IncidentCategoryView(View):
     def get(self, request):
-        lng = request.lng
-
         try:
+            # Get all the categories
             categories = IncidentCategory.objects.all()
 
+            # Loop over categories
+            # to format and create JSON objects
             category_list = []
             for category in categories:
                 category_icon_url = ''
@@ -39,299 +53,376 @@ class IncidentCategoryView(View):
                 })
 
             return JsonResponse({
-                'message': MESSAGES[lng].
-                get('SUCCESS_MESSAGE_FOR_INCIDENT_CATEGORY'),
+                'message': Messages.SUCCESS,
                 'data': category_list,
                 'error': False,
                 'status': HTTPStatus.OK
             }, status=HTTPStatus.OK)
 
-        except Exception as e:
-            return JsonResponse({
-                'message': MESSAGES[lng]
-                .get('ERROR_MESSAGE_FOR_INCIDENT_CATEGORY').format(str(e)),
-                'data': None,
-                'error': True,
-                'status': HTTPStatus.BAD_REQUEST
-            }, status=HTTPStatus.OK)
-
-
-class IncidentUpvoteView(View):
-    def put(self, request):
-        lng = request.lng
-        try:
-            incident_id = request.GET.get('id')
-            user_info = request.user_info
-            user_id = user_info.get('_id')
-
-            user = get_user_model().objects.get(_id=user_id)
-            incident = Incident.objects.get(_id=incident_id)
-
-            if incident.voters.filter(_id=user._id):
-                return JsonResponse({
-                    'message': 'Already Upvoted Issue',
-                    'data': None,
-                    'error': True,
-                    'status': HTTPStatus.OK
-                }, status=HTTPStatus.OK)
-
-            # add the user to the voters of the incident
-            incident.voters.add(user)
-
-            # increment the upvote_count of the incident
-            incident.upvote_count += 1
-
-            # upvote reached threshold
-            if incident.upvote_count == 3:
-                incident.status = 'PENDING'
-
-            incident.save()
-
-            incident = format_incident_data(incident)
-
-            return JsonResponse({
-                'message': MESSAGES[lng].get('SUCCESS_VOTE_MESSAGE'),
-                'data': incident,
-                'error': False,
-                'status': HTTPStatus.OK
-            }, status=HTTPStatus.OK)
-
+        # General exceprion
         except Exception as e:
             print(e)
+
             return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_VOTE_MESSAGE').
-                format(str(e)),
+                'message': Messages.ERROR,
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.INTERNAL_SERVER_ERROR
             }, status=HTTPStatus.OK)
 
 
-class IncidentDeleteView(View):
-    def delete(self, request):
-        lng = request.lng
-        incident_id = request.GET.get('id')
-        incident = Incident.objects.get(_id=incident_id)
+# Upvote a Issue
+class IncidentUpvoteView(View):
+    def put(self, request):
+        try:
+            incident_id = request.GET.get('id')
+            user_info = request.user_info
+            user_id = user_info.get('_id')
 
-        if incident.status == 'ACTIVE':
-            incident.is_active = False
+            # Get the user object
+            user = get_user_model().objects.get(_id=user_id)
+            # Get the incident object
+            incident = Incident.objects.filter(_id=incident_id).first()
+
+            # If incident object doesnot
+            # exists for given incident id
+            if not incident:
+                return JsonResponse({
+                    'message': Messages.ERROR_INVALID_INCIDENT_ID,
+                    'data': None,
+                    'error': True,
+                    'status': HTTPStatus.BAD_REQUEST
+                }, status=HTTPStatus.OK)
+
+            if incident.voters.filter(_id=user._id):
+                return JsonResponse({
+                    'message': Messages.ERROR_ALREADY_UPVOTED,
+                    'data': None,
+                    'error': True,
+                    'status': HTTPStatus.CONFLICT
+                }, status=HTTPStatus.OK)
+
+            # Get the incident reported user
+            reported_user = incident.user
+            # Add the user to the voters of the incident
+            incident.voters.add(user)
+            # Increment the upvote_count of the incident
+            incident.upvote_count += 1
+
+            # Upvote reached threshold
+            if incident.upvote_count == 3:
+                # Change status to pending
+                incident.status = 'PENDING'
+                # Generate a notification to reported user
+                threading.Thread(
+                    target=create_notification,
+                    args=(
+                        user,
+                        reported_user,
+                        incident,
+                        NotificationMessages
+                        .UPVOTE_THRESHOLD_REPORT
+                    )
+                ).start()
+
+            else:
+                # Generate a notification to reported user
+                # that a upvote was made
+                threading.Thread(
+                    target=create_notification,
+                    args=(
+                        user,
+                        reported_user,
+                        incident,
+                        NotificationMessages
+                        .USER_UPVOTED_REPORT.format(user.name)
+                    )
+                ).start()
+
+            # Save the incident info after upvote
             incident.save()
+            # Format the result to JSON
             incident = format_incident_data(incident)
 
             return JsonResponse({
-                'message': MESSAGES[lng]
-                .get('SUCCESS_MESSAGE_INCIDENT_DELETED'),
-                'error': False,
+                'message': Messages.SUCCESS_UPVOTE,
                 'data': incident,
+                'error': False,
                 'status': HTTPStatus.OK
             }, status=HTTPStatus.OK)
 
-        else:
+        # General exception
+        except Exception as e:
+            print(e)
+
             return JsonResponse({
-                'message': MESSAGES[lng].get('SUCCESS'),
-                'error': True,
+                'message': Messages.ERROR,
                 'data': None,
-                'status': HTTPStatus.OK
+                'error': True,
+                'status': HTTPStatus.INTERNAL_SERVER_ERROR
             }, status=HTTPStatus.OK)
 
 
+# Delete a Issue
+class IncidentDeleteView(View):
+    def delete(self, request):
+        try:
+            user_info = request.user_info
+            incident_id = request.GET.get('id')
+            user_id = user_info.get('_id')
+
+            # Get the incident object, it must belong
+            # to current user to delete it
+            incident = Incident\
+                .objects.filter(_id=incident_id, user___id=user_id).first()
+
+            # If incident object doesnot
+            # exists for given incident id
+            if not incident:
+                return JsonResponse({
+                    'message': Messages.ERROR_INVALID_INCIDENT_ID,
+                    'data': None,
+                    'error': True,
+                    'status': HTTPStatus.BAD_REQUEST
+                }, status=HTTPStatus.OK)
+
+            # Delete is possible only when
+            # incident is in ACTIVE status
+            if incident.status == 'ACTIVE':
+                # Soft delete, set is_active to False
+                incident.is_active = False
+                # Save the object
+                incident.save()
+                # Format the result to JSON
+                incident = format_incident_data(incident)
+
+                return JsonResponse({
+                    'message': Messages.SUCCESS_DELETE,
+                    'error': False,
+                    'data': incident,
+                    'status': HTTPStatus.OK
+                }, status=HTTPStatus.OK)
+
+            else:
+                # Incident cannot be deleted
+                # due to status other than ACTIVE
+                return JsonResponse({
+                    'message': Messages.ERROR_DELETE,
+                    'data': None,
+                    'error': True,
+                    'status': HTTPStatus.CONFLICT
+                }, status=HTTPStatus.OK)
+
+        # General exception
+        except Exception as e:
+            print(e)
+
+            return JsonResponse({
+                'message': Messages.ERROR,
+                'data': None,
+                'error': True,
+                'status': HTTPStatus.INTERNAL_SERVER_ERROR
+            }, status=HTTPStatus.OK)
+
+
+# Report or get a Issue
 class IncidentReportView(View):
     def get(self, request):
-        lng = request.lng
-
         try:
+            user_info = request.user_info
             incident_id = request.GET.get('id')
-            user_lat = float(request.GET.get("lat"))
-            user_lng = float(request.GET.get("lng"))
 
-            incident = Incident.objects.get(
-                _id=incident_id,
-                is_active=True
-            )
+            # Get the incident object
+            incident = Incident.objects\
+                .filter(_id=incident_id,).first()
 
-            incident_lat = float(incident.coordinate.get('lat'))
-            incident_lng = float(incident.coordinate.get('lng'))
+            # If incident object doesnot
+            # exists for given incident id
+            if not incident:
+                return JsonResponse({
+                    'message': Messages.ERROR_INVALID_INCIDENT_ID,
+                    'data': None,
+                    'error': True,
+                    'status': HTTPStatus.BAD_REQUEST
+                }, status=HTTPStatus.OK)
 
-            distance = haversine(
-                user_lat,
-                user_lng,
-                incident_lat,
-                incident_lng
-            )
-
-            incident = format_incident_data(incident, distance)
+            # Format the result to JSON
+            incident = format_incident_data(incident, user_info)
 
             return JsonResponse({
-                "message": MESSAGES[lng].get(
-                    "SUCCESS"
-                ),
+                "message": Messages.SUCCESS,
                 "data": incident,
                 "error": False,
                 "status": HTTPStatus.OK,
             }, status=HTTPStatus.OK)
 
+        # General exception
         except Exception as e:
             print(e)
+
             return JsonResponse({
-                "message": MESSAGES[lng].get(
-                    "ERROR"
-                ),
+                "message": Messages.ERROR,
                 "data": None,
-                "error": False,
+                "error": True,
                 "status": HTTPStatus.INTERNAL_SERVER_ERROR,
             }, status=HTTPStatus.OK)
 
     def post(self, request):
-        lng = request.lng
-        user_info = request.user_info
-
         try:
             report = json.loads(request.POST.get('report'))
             category_id = report.get('category_id')
             subject = report.get('subject')
             description = report.get('description')
-            coordinate = report.get('coordinate')
-            incident_lat = float(coordinate.get('lat'))
-            incident_lng = float(coordinate.get('lng'))
+            coordinates = report.get('coordinates')
+            incident_lat = float(coordinates.get('lat'))
+            incident_lng = float(coordinates.get('lng'))
             address = report.get('address')
             is_internal_for_org = report.get('is_internal_for_org', False)
+            # Get the images for the report
             pictures = request.FILES.getlist('pictures')[:3]
-            nearest_project = ''
+            # Create a point for given coordinates
+            incident_point = Point(incident_lng, incident_lat, srid=4326)
+            user_info = request.user_info
+            is_staff = user_info.get('is_staff')
 
+            # Get the user object
             user = get_user_model().objects\
-                .get(_id=user_info.get('_id'), is_active=True)
+                .get(_id=user_info.get('_id'))
 
-            incident_category = IncidentCategory.objects.get(_id=category_id)
+            # Get the category object
+            incident_category = IncidentCategory.objects\
+                .filter(_id=category_id).first()
 
-            # check if user has a project
-            if is_internal_for_org and not user_info.get('is_staff'):
+            # If invalid category ID is passed
+            if not incident_category:
+                return JsonResponse({
+                    'message': Messages.ERROR_INVALID_CATEGORY_ID,
+                    'data': None,
+                    'error': True,
+                    'status': HTTPStatus.BAD_REQUEST
+                }, status=HTTPStatus.OK)
+
+            # If is_internal_for_org flag is set
+            # and user is regular user, undo the flag
+            if is_internal_for_org and not is_staff:
                 is_internal_for_org = False
 
-            # site user is reporting issue
-            if user_info.get('is_staff') and user_info.get('project_id'):
-                # map the project
-                nearest_project = Project.objects\
-                    .get(_id=user_info.get('project_id'))
-            else:
-                # find nearest project for the given incident coordinate
-                projects = Project.objects.all().filter(is_active=True)
-                nearest_project = projects.first()
-                nearest_project_coordinate = nearest_project.coordinate
-                nearest_project_distance = haversine(
-                    incident_lat,
-                    incident_lng,
-                    float(nearest_project_coordinate.get('lat')),
-                    float(nearest_project_coordinate.get('lng'))
-                )
-
-                for project in projects:
-                    project_lat = float(project.coordinate.get('lat'))
-                    project_lng = float(project.coordinate.get('lng'))
-
-                    distance = haversine(
-                        incident_lat,
-                        incident_lng,
-                        project_lat,
-                        project_lng
-                    )
-
-                    if nearest_project_distance > distance:
-                        nearest_project_distance = distance
-                        nearest_project = project
-
-            incident = Incident.objects.create(
+            # Create a incident object
+            incident = Incident(
                 user=user,
-                project=nearest_project,
                 incident_category=incident_category,
                 subject=subject,
                 description=description,
-                coordinate=coordinate,
+                coordinates=incident_point,
                 address=address,
-                reported_by='ORG' if user_info.get('is_staff') else 'USER',
+                reported_by='ORG' if is_staff else 'USER',
                 is_internal_for_org=is_internal_for_org,
             )
 
-            # loop over images if present
+            # Find the nearby project within 100 meter radius
+            nearby_project = Project.objects.filter(
+                coordinates__distance_lte=(incident_point, D(m=100))
+            ).annotate(
+                distance=Distance('coordinates', incident_point)
+            ).order_by('distance').first()
+
+            # If we have a closeby project
+            # assign the incident to that project
+            if nearby_project:
+                incident.project = nearby_project
+
+            # Save the incident object
+            incident.save()
+
+            # Loop over images if present
             images = []
             for picture in pictures:
                 incident_image = IncidentImage()
                 incident_image.image = picture
-                incident_image.image.name = f'{uuid.uuid4()}_{picture.name}'
-
+                incident_image.image.name = picture.name
+                # Save the images
                 incident_image.save()
                 images.append(incident_image)
 
-            # if images are present
+            # Set the images to incident if present
             if images:
                 incident.images.set(images)
 
+            # Create notification for nearby users
+            threading.Thread(
+                target=create_notification_stream,
+                args=(
+                    user,
+                    incident,
+                    NotificationMessages
+                    .NEARBY_REPORT
+                )
+            ).start()
+
+            # Format the result to JSON
             incident = format_incident_data(incident)
 
             return JsonResponse({
-                "message": MESSAGES[lng].get(
-                    "SUCCESS_MESSAGE_FOR_NEARBY_INCIDENTS"
-                ),
+                "message": Messages.SUCCESS_REPORT,
                 "data": incident,
                 "error": False,
                 "status": HTTPStatus.OK,
             }, status=HTTPStatus.OK)
 
+        # General Exception
         except Exception as e:
             print(e)
-            JsonResponse({
-                "message": MESSAGES[lng].get(
-                    "ERROR"
-                ),
+
+            return JsonResponse({
+                "message": Messages.ERROR,
                 "data": None,
                 "error": False,
                 "status": HTTPStatus.INTERNAL_SERVER_ERROR,
             }, status=HTTPStatus.OK)
 
 
+# Get nearby Issues
 class IncidentNearbyView(View):
     def get(self, request):
-        lng = request.lng
-
         try:
-            filter_by = request.GET.get('filter_by')
             user_lat = float(request.GET.get("lat"))
             user_lng = float(request.GET.get("lng"))
-            radius = float(request.GET.get("r"))
+            user_point = Point(user_lng, user_lat, srid=4326)
+            user_info = request.user_info
 
-            incidents = Incident.objects.all()\
-                .filter(is_active=True)
+            # Get user object
+            user = get_user_model().objects\
+                .get(_id=user_info.get('_id'))
 
-            if filter_by == 'ORG':
-                incidents = incidents.filter(reported_by='ORG')
-            elif filter_by == 'USER':
-                incidents = incidents.filter(reported_by='USER')
+            # Find the nearby incident within alert_radius provided by
+            # user, fetch only ACTIVE, PENDING, FIXING status objects
+            nearby_incidents_qs = Incident.objects.filter(
+                coordinates__distance_lte=(
+                    user_point, D(km=user.alert_radius)),
+                is_active=True,
+                status__in=['ACTIVE', 'PENDING', 'FIXING']
+            ).annotate(
+                distance=Distance('coordinates', user_point)
+            ).order_by('distance')
 
+            # Format to JSON and create array of nearby incidents
             nearby_incidents = []
-            for incident in incidents:
-                incident_lat = incident.coordinate.get('lat')
-                incident_lng = incident.coordinate.get('lng')
-
-                distance = haversine(
-                    user_lng, user_lat, incident_lng, incident_lat
-                )
-                if distance <= radius:
-                    nearby_incidents\
-                        .append(format_incident_data(incident, distance))
+            for incident in nearby_incidents_qs:
+                nearby_incidents.append(format_incident_data(incident))
 
             return JsonResponse({
-                "message": MESSAGES[lng].get(
-                    "SUCCESS_MESSAGE_FOR_NEARBY_INCIDENTS"
-                ),
+                "message": Messages.SUCCESS,
                 "data": nearby_incidents,
                 "error": False,
                 "status": HTTPStatus.OK,
             }, status=HTTPStatus.OK)
 
+        # General exception
         except Exception as e:
+            print(e)
+
             return JsonResponse({
-                "message": MESSAGES[lng]
-                .get("ERROR_MESSAGE_FOR_NEARBY_INCIDENTS")
-                .format(str(e)),
+                "message": Messages.ERROR,
                 "data": None,
                 "error": True,
                 "status": HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -340,46 +431,45 @@ class IncidentNearbyView(View):
 
 class IncidentUserView(View):
     def get(self, request):
-        lng = request.lng
-        user_info = request.user_info
-
         try:
             filter_by = request.GET.get('filter_by', None)
-            user_lat = float(request.GET.get("lat"))
-            user_lng = float(request.GET.get("lng"))
+            user_info = request.user_info
 
+            # Get all incident objects reported by current user
             incidents = Incident.objects.all()\
                 .filter(user___id=user_info.get('_id'))
 
-            if filter_by is not None:
+            # If valid filter_by option is passed
+            if filter_by and filter_by not in ALL_INCIDENT_STATUS:
+                return JsonResponse({
+                    "message": Messages.ERROR_INVALID_FILTERBY,
+                    "data": None,
+                    "error": True,
+                    "status": HTTPStatus.BAD_REQUEST,
+                }, status=HTTPStatus.OK)
+
+            if filter_by:
                 incidents = incidents.filter(status=filter_by)
 
+            # Format to JSON and create array of user incidents
             user_incidents = []
             for incident in incidents:
-                incident_lat = incident.coordinate.get('lat')
-                incident_lng = incident.coordinate.get('lng')
-
-                distance = haversine(
-                    user_lng, user_lat, incident_lng, incident_lat
-                )
-
                 user_incidents\
-                    .append(format_incident_data(incident, distance))
+                    .append(format_incident_data(incident))
 
             return JsonResponse({
-                "message": MESSAGES[lng].get(
-                    "SUCCESS_MESSAGE_FOR_NEARBY_INCIDENTS"
-                ),
+                "message": Messages.SUCCESS,
                 "data": user_incidents,
                 "error": False,
                 "status": HTTPStatus.OK,
             }, status=HTTPStatus.OK)
 
+        # General exception
         except Exception as e:
+            print(e)
+
             return JsonResponse({
-                "message": MESSAGES[lng]
-                .get("ERROR_MESSAGE_FOR_NEARBY_INCIDENTS")
-                .format(str(e)),
+                "message": Messages.ERROR,
                 "data": None,
                 "error": True,
                 "status": HTTPStatus.INTERNAL_SERVER_ERROR,
@@ -388,116 +478,240 @@ class IncidentUserView(View):
 
 class IncidentSiteView(View):
     def get(self, request, reported_by):
-        lng = request.lng
-        user_info = request.user_info
-
         try:
+            user_info = request.user_info
             filter_by = request.GET.get('filter_by', None)
             project = Project.objects\
                 .get(_id=user_info.get('project_id'))
+            reported_by = reported_by.upper()
 
+            # Check reported_by field
+            if reported_by not in ['USER', 'ORG']:
+                return JsonResponse({
+                    "message": Messages.ERROR_INVALID_REPORTEDBY,
+                    "data": None,
+                    "error": True,
+                    "status": HTTPStatus.BAD_REQUEST,
+                }, status=HTTPStatus.OK)
+
+            # Get incident objects
             incidents = Incident.objects\
                 .filter(
                     is_active=True,
                     project___id=project._id,
-                    reported_by=str(reported_by).upper()
+                    reported_by=reported_by,
+                    is_active=True,
                 )
 
-            if filter_by is not None:
-                if filter_by == 'INTERNAL':
-                    incidents = incidents.filter(is_internal_for_org=True)
-                else:
-                    incidents = incidents.filter(status=filter_by)
+            ALL_OPTIONS = [*ALL_INCIDENT_STATUS, 'INTERNAL']
 
-            project_lat = float(project.coordinate.get('lat'))
-            project_lng = float(project.coordinate.get('lng'))
+            # If valid filter_by option is passed
+            if filter_by and filter_by not in ALL_OPTIONS:
 
+                return JsonResponse({
+                    "message": Messages.ERROR_INVALID_FILTERBY,
+                    "data": None,
+                    "error": True,
+                    "status": HTTPStatus.BAD_REQUEST,
+                }, status=HTTPStatus.OK)
+
+            # Based on filter, filter-out the incident objects
+            if filter_by == 'INTERNAL':
+                incidents = incidents.filter(is_internal_for_org=True)
+            else:
+                incidents = incidents.filter(status=filter_by)
+
+            # Format to JSON and create array of site incidents
             site_incidents = []
             for incident in incidents:
-                incident_lat = float(incident.coordinate.get('lat'))
-                incident_lng = float(incident.coordinate.get('lng'))
-
-                distance = haversine(
-                    incident_lat,
-                    incident_lng,
-                    project_lat,
-                    project_lng
-                )
-
                 site_incidents.append(
-                    format_incident_data(incident, distance)
+                    format_incident_data(incident)
                 )
 
             return JsonResponse({
-                'message': MESSAGES[lng].get(
-                    'SUCCESS_MESSAGE_FOR_INCIDENT_SITE'),
+                'message': Messages.SUCCESS,
                 'data': site_incidents,
                 'error': False,
                 'status': HTTPStatus.OK
             }, status=HTTPStatus.OK)
 
+        # General exception
         except Exception as e:
             print(e)
+
             return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_REPORT_MESSAGE'),
+                'message': Messages.ERROR,
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.INTERNAL_SERVER_ERROR
             }, status=HTTPStatus.OK)
 
-    def put(self, request, *args, **kwargs):
+    def put(self, request, reported_by):
         try:
-            lng = request.lng
             status = request.GET.get('status')
             incident_id = request.GET.get('id')
+            user_info = request.user_info
+            is_staff = user_info.get('is_staff')
 
-            if not status or not incident_id:
+            # Not a org employee
+            if not is_staff:
                 return JsonResponse({
-                    'message': MESSAGES[lng].get(
-                        'ERROR_MESSAGE_ID_NOT_PROVIDED'),
-                    'error': True
-                }, status=400)
+                    "message": Messages.ERROR_UNAUTHORIZED,
+                    "data": None,
+                    "error": True,
+                    "status": HTTPStatus.UNAUTHORIZED,
+                }, status=HTTPStatus.OK)
 
-            if status not in ['PENDING', 'FIXING', 'RESOLVED', 'REJECTED']:
+            # Get user object
+            user = get_user_model().objects\
+                .get(_id=user_info.get('_id'))
+
+            # Get project object
+            project = user.project
+
+            if not project:
                 return JsonResponse({
-                    'message': MESSAGES[lng].get(
-                        'ERROR_MESSAGE_INVALID_STATUS').format(status),
-                    'error': True
-                }, status=400)
+                    "message": Messages.ERROR_NO_PROJECT,
+                    "data": None,
+                    "error": True,
+                    "status": HTTPStatus.BAD_REQUEST,
+                }, status=HTTPStatus.OK)
 
-            try:
-                incident = Incident.objects.get(_id=incident_id)
-            except Incident.DoesNotExist:
+            # Check provided status
+            if status not in ['FIXING', 'REJECTED', 'RESOLVED']:
                 return JsonResponse({
-                    'message': MESSAGES[lng].get(
-                        'INCIDENT_NOT_FOUND').format(incident_id),
-                    'error': True
-                }, status=404)
+                    "message": Messages.ERROR_INVALID_STATUS,
+                    "data": None,
+                    "error": True,
+                    "status": HTTPStatus.BAD_REQUEST,
+                }, status=HTTPStatus.OK)
 
-            if status == 'PENDING':
+            incident = Incident.objects\
+                .filter(_id=incident_id).first()
+
+            # If incident object doesnot
+            # exists for given incident id
+            if not incident:
+                return JsonResponse({
+                    'message': Messages.ERROR_INVALID_INCIDENT_ID,
+                    'data': None,
+                    'error': True,
+                    'status': HTTPStatus.BAD_REQUEST
+                }, status=HTTPStatus.OK)
+
+            if incident.status == status:
+                return JsonResponse({
+                    'message': Messages.ERROR_ALREADY_IN_STATUS,
+                    'data': None,
+                    'error': True,
+                    'status': HTTPStatus.CONFLICT
+                }, status=HTTPStatus.OK)
+
+            # Get incident reported user
+            reported_user = incident.user
+
+            if status == 'FIXING':
                 incident.is_accepted_by_org = True
-                incident.status = 'PENDING'
-                success_message = MESSAGES[lng].get('SUCCESS_MESSAGE_PENDING')
-            elif status == 'FIXING':
-                incident.status = 'FIXING'
-                success_message = MESSAGES[lng].get('SUCCESS_MESSAGE_FIXING')
-            elif status == 'RESOLVED':
-                incident.status = 'RESOLVED'
-                success_message = MESSAGES[lng].get('SUCCESS_MESSAGE_RESOLVED')
-            elif status == 'REJECTED':
-                incident.is_active = False
-                incident.status = 'REJECTED'
-                success_message = MESSAGES[lng].get('SUCCESS_MESSAGE_REJECTED')
+                incident.project = user.project
 
+                # Generate a notification to reported user
+                threading.Thread(
+                    target=create_notification,
+                    args=(
+                        user,
+                        reported_user,
+                        incident,
+                        NotificationMessages
+                        .ORG_ACCEPTED_REPORT
+                        .format(project.organization.name)
+                    )
+                ).start()
+
+                # Create notification for nearby users
+                threading.Thread(
+                    target=create_notification_stream,
+                    args=(
+                        user,
+                        incident,
+                        NotificationMessages
+                        .NEARBY_REPORT_CONFIRMED
+                    )
+                ).start()
+
+                incident.status = 'FIXING'
+
+            elif status == 'RESOLVED':
+                # Incident doesnot belong
+                # to the current org to resolve
+                if incident.project___id != project._id:
+                    return JsonResponse({
+                        'message': Messages.ERROR_UNAUTHORIZED_RESOLVE,
+                        'data': None,
+                        'error': True,
+                        'status': HTTPStatus.UNAUTHORIZED
+                    }, status=HTTPStatus.OK)
+
+                # Generate a notification to reported user
+                threading.Thread(
+                    target=create_notification,
+                    args=(
+                        user,
+                        reported_user,
+                        incident,
+                        NotificationMessages
+                        .ORG_RESOLVED_REPORT
+                        .format(project.organization.name)
+                    )
+                ).start()
+
+                incident.status = 'RESOLVED'
+
+            elif status == 'REJECTED':
+                # Incident doesnot belong
+                # to the current org to reject it
+                if incident.project___id != project._id:
+                    return JsonResponse({
+                        'message': Messages.ERROR_UNAUTHORIZED_REJECT,
+                        'data': None,
+                        'error': True,
+                        'status': HTTPStatus.UNAUTHORIZED
+                    }, status=HTTPStatus.OK)
+
+                # Generate a notification to reported user
+                threading.Thread(
+                    target=create_notification,
+                    args=(
+                        user,
+                        reported_user,
+                        incident,
+                        NotificationMessages
+                        .ORG_REJECTED_REPORT
+                        .format(project.organization.name)
+                    )
+                ).start()
+
+                incident.status = 'REJECTED'
+
+            # Save the incident object
             incident.save()
 
-            return JsonResponse({
-                'message': success_message,
-                'error': False
-            }, status=200)
+            # Format the result to JSON
+            incident = format_incident_data(incident)
 
-        except Exception:
             return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_UPDATE_FAILED'),
-                'error': True
-            }, status=500)
+                'message': Messages.SUCCESS,
+                'data': incident,
+                'error': False,
+                'status': HTTPStatus.OK
+            }, status=HTTPStatus.OK)
+
+        # General exception
+        except Exception as e:
+            print(e)
+
+            return JsonResponse({
+                'message': Messages.ERROR,
+                'data': None,
+                'error': True,
+                'status': HTTPStatus.INTERNAL_SERVER_ERROR
+            }, status=HTTPStatus.OK)

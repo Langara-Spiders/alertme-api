@@ -17,7 +17,7 @@ app_name = 'incident'
 
 urlpatterns = [
     path(
-        'category',
+        'categories',
         IncidentCategoryView.as_view(),
         name='incident-categories',
     ),

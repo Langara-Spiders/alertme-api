@@ -12,6 +12,7 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from django.http import JsonResponse
 from http import HTTPStatus
+from django.contrib.gis.geos import Point
 from django.contrib.auth import (
     get_user_model
 )
@@ -19,7 +20,7 @@ from core.models import (
     Incident
 )
 from core.utils import generate_jwt_token
-from .messages import MESSAGES
+from core.messages import Messages
 
 
 CONFIRMED_REPORTS_PER_LEVEL = 25
@@ -33,43 +34,41 @@ client_id = {
 
 class LoginView(View):
     def post(self, request):
-        # get language support
-        lng = request.lng
-        # get platform info
+        # Get platform info
         platform = request.GET.get('platform', 'web')
         try:
             data = json.loads(request.body)
-            # check if OAuth token was valid
+            # Check if OAuth token was valid
             token_info = id_token.verify_oauth2_token(
                 data.get('token'),
                 google_requests.Request(),
                 os.environ.get(client_id.get(platform))
             )
 
+        # Token decode error
         except ValueError as e:
+            print(e)
+
             return JsonResponse({
-                'message': MESSAGES[lng]
-                .get('ERROR_MESSAGE_INVALID_TOKEN').format(e),
+                'message': Messages.JWT_INAVLID_TOKEN,
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.BAD_REQUEST
             }, status=HTTPStatus.OK)
 
-        # check if user exists
-        try:
-            user = get_user_model()\
-                .objects.get(email=token_info.get('email'), is_active=True)
+        user = get_user_model().objects\
+            .filter(email=token_info.get('email'), is_active=True).first()
 
-        except get_user_model().DoesNotExist:
+        # Check if user exists
+        if not user:
             return JsonResponse({
-                'message': MESSAGES[lng]
-                .get('ERROR_MESSAGE_UNAUTHORIZED'),
+                'message': Messages.ERROR,
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.UNAUTHORIZED
             }, status=HTTPStatus.OK)
 
-        # generate JWT token
+        # Generate JWT token
         token = generate_jwt_token(
             _id=str(user._id),
             name=user.name,
@@ -79,7 +78,7 @@ class LoginView(View):
         )
 
         return JsonResponse({
-            'message': MESSAGES[lng].get('SUCCESS_MESSAGE_LOGIN'),
+            'message': Messages.SUCCESS,
             'data': {'token': token},
             'error': False,
             'status': HTTPStatus.OK
@@ -88,35 +87,43 @@ class LoginView(View):
 
 class SignupView(View):
     def post(self, request):
-        lng = request.lng
-        # get platform info
+        # Get platform info
         platform = request.GET.get('platform', 'web')
         try:
             data = json.loads(request.POST.get('user'))
             token = json.loads(request.POST.get('token'))
             picture = request.FILES.get('picture')
 
-            # check if OAuth token was valid
-            token_info = id_token.verify_oauth2_token(
-                token,
-                google_requests.Request(),
-                os.environ.get(client_id.get(platform))
-            )
-
-            # check if user exists
+            # Check if OAuth token was valid
             try:
-                user = get_user_model().objects\
-                    .get(email=token_info.get('email'))
-                # hardcoded the message for now
+                token_info = id_token.verify_oauth2_token(
+                    token,
+                    google_requests.Request(),
+                    os.environ.get(client_id.get(platform))
+                )
+
+            # Token decode exception
+            except ValueError as e:
+                print(e)
+
                 return JsonResponse({
-                    'message': "User already exists, please try to login",
+                    'message': Messages.ERROR_TOKEN,
                     'data': None,
-                    'error': False,
-                    'status': HTTPStatus.OK
+                    'error': True,
+                    'status': HTTPStatus.BAD_REQUEST
                 }, status=HTTPStatus.OK)
 
-            except get_user_model().DoesNotExist:
-                pass
+            user = get_user_model().objects\
+                .filter(email=token_info.get('email')).first()
+
+            # Check if user exists
+            if user:
+                return JsonResponse({
+                    'message': Messages.ERROR_ACCOUNT_EXISTS,
+                    'data': None,
+                    'error': True,
+                    'status': HTTPStatus.CONFLICT
+                }, status=HTTPStatus.OK)
 
             # create and return user
             user = get_user_model().objects.create(
@@ -124,7 +131,16 @@ class SignupView(View):
                 email=token_info.get('email'),
                 phone=data.get('phone'),
                 address=data.get('address'),
-                coordinate=data.get('coordinate'),
+                coordinates=Point(
+                    data.get('coordinate').get('lng'),
+                    data.get('coordinate').get('lat'),
+                    srid=4326,
+                ),
+                roaming_coordinates=Point(
+                    data.get('coordinate').get('lng'),
+                    data.get('coordinate').get('lat'),
+                    srid=4326,
+                ),
             )
 
             if picture:
@@ -134,7 +150,7 @@ class SignupView(View):
                     save=True
                 )
 
-            # generate JWT token
+            # Generate JWT token
             token = generate_jwt_token(
                 _id=str(user._id),
                 name=user.name,
@@ -144,25 +160,17 @@ class SignupView(View):
             )
 
             return JsonResponse({
-                'message': MESSAGES[lng].get('SUCCESS_MESSAGE_CREATE_USER'),
+                'message': Messages.SUCCESS,
                 'data': {'token': token},
                 'error': False,
                 'status': HTTPStatus.CREATED
             }, status=HTTPStatus.CREATED)
 
-        except ValueError as e:
-            return JsonResponse({
-                'message': MESSAGES[lng]
-                .get('ERROR_MESSAGE_INVALID_TOKEN').format(e),
-                'data': None,
-                'error': True,
-                'status': HTTPStatus.BAD_REQUEST
-            }, status=HTTPStatus.OK)
-
+        # General exception
         except Exception as e:
             print(e)
             return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_CREATE_USER'),
+                'message': Messages.ERROR,
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.INTERNAL_SERVER_ERROR
@@ -171,12 +179,11 @@ class SignupView(View):
 
 class ProfileView(View):
     def get(self, request):
-        lng = request.lng
         try:
-            # get authorized user info
+            # Get authorized user info
             user_info = request.user_info
 
-            # get user
+            # Get user
             user = get_user_model().objects\
                 .get(_id=user_info.get('_id'), is_active=True)
 
@@ -194,53 +201,59 @@ class ProfileView(View):
                 'phone': user.phone,
                 'project_id': user.get_project_id(),
                 'address': user.address,
-                'coordinate': user.coordinate,
+                'coordinates': {
+                    'latitude': user.coordinates.y,
+                    'longitude': user.coordinates.x,
+                },
             }
 
             return JsonResponse({
-                'message': MESSAGES[lng].get('SUCCESS'),
+                'message': Messages.SUCCESS,
                 'data': {'user': user_json},
                 'error': False,
                 'status': HTTPStatus.OK
             }, status=HTTPStatus.OK)
 
+        # General exception
         except Exception as e:
             print(e)
+
             return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR'),
+                'message': Messages.ERROR,
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.INTERNAL_SERVER_ERROR
             }, status=HTTPStatus.OK)
 
     def post(self, request):
-        lng = request.lng
         try:
             data = json.loads(request.POST.get('user'))
             picture = request.FILES.get('picture')
-
-            # get authorized user info
+            # Get user info
             user_info = request.user_info
 
             user = get_user_model().objects\
-                .filter(_id=user_info.get('_id'), is_active=True)
+                .filter(_id=user_info.get('_id'))
 
             user.update(
                 name=data.get('name'),
                 phone=data.get('phone'),
                 address=data.get('address'),
-                coordinate=data.get('coordinate')
+                coordinates=Point(
+                    data.get('coordinates').get('lng'),
+                    data.get('coordinates').get('lat'),
+                    srid=4326,
+                ),
             )
 
-            # take the first user of queryset
-            user = user[0]
+            user = user.first()
 
-            # if profile picture has to be updated
+            # If profile picture has to be updated
             if picture:
                 user.picture\
                     .save(f"{uuid.uuid4()}_{picture.name}", picture, save=True)
 
-            # generate JWT token
+            # Generate JWT token
             token = generate_jwt_token(
                 _id=str(user._id),
                 name=user.name,
@@ -249,7 +262,7 @@ class ProfileView(View):
                 is_staff=user.is_staff,
             )
 
-            # send some default picture
+            # Send some default picture
             picture_url = ''
             if user.picture:
                 picture_url = user.picture.url
@@ -262,23 +275,28 @@ class ProfileView(View):
                 'phone': user.phone,
                 'project_id': user.get_project_id(),
                 'address': user.address,
-                'coordinate': user.coordinate,
+                'coordinates': {
+                    'lat': user.coordinates.y,
+                    'lng': user.coordinates.x,
+                },
             }
 
             return JsonResponse({
-                'message': MESSAGES[lng].get('SUCCESS_MESSAGE_UPDATE_USER'),
+                'message': Messages.SUCCESS,
                 'data': {
                     'token': token,
                     'user': user_json
                 },
                 'error': False,
-                'status': HTTPStatus.OK
+                'status': HTTPStatus.CREATED
             }, status=HTTPStatus.OK)
 
+        # General exception
         except Exception as e:
             print(e)
+
             return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR_MESSAGE_UPDATE_USER'),
+                'message': Messages.ERROR,
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.INTERNAL_SERVER_ERROR
@@ -287,13 +305,11 @@ class ProfileView(View):
 
 class RewardView(View):
     def get(self, request):
-        lng = request.lng
-        user_info = request.user_info
-
         try:
-            # get top three users based on points
+            # Get top three users based on points
             top_users_qs = get_user_model().objects\
                 .order_by('-points', 'name')[:3]
+            user_info = request.user_info
 
             top_users = []
             for user in top_users_qs:
@@ -321,7 +337,7 @@ class RewardView(View):
                 'confirmed_issues': user_incidents_count,
             }
 
-            # leaderboard
+            # Leaderboard
             user_rank = get_user_model().objects.annotate(
                 rank=Window(
                     expression=Rank(),
@@ -355,7 +371,7 @@ class RewardView(View):
                 })
 
             return JsonResponse({
-                'message': MESSAGES[lng].get('SUCCESS'),
+                'message': Messages.SUCCESS,
                 'data': {
                     'user_details': user_details,
                     'top_users': top_users,
@@ -368,7 +384,7 @@ class RewardView(View):
         except Exception as e:
             print(e)
             return JsonResponse({
-                'message': MESSAGES[lng].get('ERROR'),
+                'message': Messages.ERROR,
                 'data': None,
                 'error': True,
                 'status': HTTPStatus.INTERNAL_SERVER_ERROR

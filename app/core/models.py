@@ -3,12 +3,19 @@ Database models
 """
 
 from django.db import models
+from django.contrib.gis.db import models as gis_models
+from django.contrib.gis.geos import Point
 import uuid
 from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
     PermissionsMixin,
 )
+
+NOTIFICATION_TYPE_CHOICES = [
+    ('BROADCAST', 'Broadcast'),
+    ('SINGLE', 'Single')
+]
 
 
 # Choices for the "status" field in the Incident model
@@ -35,12 +42,16 @@ class Organization(models.Model):
     name = models.CharField(max_length=100)
     email = models.EmailField(max_length=255, unique=True)
     address = models.JSONField(default=dict)
+    coordinates = gis_models.PointField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
 
+    def __str__(self):
+        return f'id: {self._id} | name: {self.name}'
+
     class Meta:
-        ordering = ["name"]
+        ordering = ["-name"]
         db_table = "organizations"
 
 
@@ -51,7 +62,7 @@ class Project(models.Model):
     name = models.CharField(max_length=100)
     address = models.JSONField(default=dict)
     description = models.CharField(max_length=500)
-    coordinate = models.JSONField(default=dict)
+    coordinates = gis_models.PointField(blank=True, null=True)
     organization = models.ForeignKey(
         Organization, on_delete=models.PROTECT, null=False
     )
@@ -59,8 +70,12 @@ class Project(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
 
+    def __str__(self):
+        coords = self.coordinates
+        return f'id: {self._id} | name: {self.name}'
+
     class Meta:
-        ordering = ["name"]
+        ordering = ["-name"]
         db_table = "projects"
 
 
@@ -99,8 +114,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(max_length=255, unique=True)
     phone = models.CharField(max_length=15)
     address = models.JSONField(default=dict)
-    coordinate = models.JSONField(default=dict)
-    notification = models.JSONField(default=dict)
+    coordinates = gis_models.PointField(
+        default=Point(0.0, 0.0), blank=True, null=True)
+    roaming_coordinates = gis_models.PointField(
+        default=Point(0.0, 0.0), blank=True, null=True)
+    alert_radius = models.FloatField(default=3)
+    notification = models.JSONField(default=dict, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     project = models.ForeignKey(
@@ -118,8 +137,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     def get_project_id(self):
         return self.project._id if self.project else ''
 
+    def __str__(self):
+        coords = self.roaming_coordinates
+        return f'id: {self._id} | name: {self.name} \
+            | email: {self.email} \
+            {"| ORG" if self.is_staff else ""} \
+            | coords: {coords.y}, {coords.x}'
+
     class Meta:
-        ordering = ["name"]
+        ordering = ["-name"]
         db_table = "users"
 
     objects = UserManager()
@@ -136,8 +162,11 @@ class IncidentCategory(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return f'id: {self._id} | name: {self.name}'
+
     class Meta:
-        ordering = ["name"]
+        ordering = ["created_at"]
         db_table = "incident_categories"
         verbose_name = "Incident Category"
         verbose_name_plural = "Incident Categories"
@@ -158,7 +187,9 @@ class Incident(models.Model):
     _id = models.UUIDField(
         primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.PROTECT)
-    project = models.ForeignKey(Project, on_delete=models.PROTECT)
+    project = models.ForeignKey(
+        Project, on_delete=models.PROTECT, blank=True, null=True
+    )
     images = models.ManyToManyField(
         IncidentImage, related_name="incidents", blank=True
     )
@@ -166,7 +197,7 @@ class Incident(models.Model):
         IncidentCategory, on_delete=models.PROTECT)
     subject = models.CharField(max_length=30)
     description = models.CharField(max_length=200)
-    coordinate = models.JSONField(default=dict)
+    coordinates = gis_models.PointField(blank=True, null=True)
     address = models.JSONField(default=dict)
     upvote_count = models.IntegerField(default=0)
     report_count = models.IntegerField(default=0)
@@ -191,8 +222,15 @@ class Incident(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        coords = self.coordinates
+        return f'id: {self._id} | subject: {self.subject} \
+            | created by: {self.user.name} \
+            ({ "ORG" if self.user.is_staff else "USER"}) \
+            | coords: {coords.y}, {coords.x}'
+
     class Meta:
-        ordering = ["created_at"]
+        ordering = ["-created_at"]
         db_table = "incidents"
 
 
@@ -200,14 +238,25 @@ class Incident(models.Model):
 class NotificationList(models.Model):
     _id = models.UUIDField(
         primary_key=True, default=uuid.uuid4, editable=False)
-    user_id = models.ForeignKey(User, on_delete=models.PROTECT)
-    incident_id = models.ForeignKey(Incident, on_delete=models.PROTECT)
+    type = models.CharField(
+        max_length=10,
+        choices=NOTIFICATION_TYPE_CHOICES
+    )
+    user = models.ForeignKey(User, on_delete=models.PROTECT)
+    incident = models.ForeignKey(Incident, on_delete=models.PROTECT)
+    coordinates = gis_models.PointField(blank=True, null=True)
+    title = models.CharField(max_length=70)
     subject = models.CharField(max_length=30)
+    description = models.CharField(max_length=200)
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        coords = self.coordinates
+        return f'id: {self._id} | subject: {self.subject} \
+            | coords: {coords.y}, {coords.x}'
 
     class Meta:
-        ordering = ["created_at"]
+        ordering = ["-created_at"]
         db_table = "notifications_list"
         verbose_name = "Notification List"
         verbose_name_plural = "Notifications List"
