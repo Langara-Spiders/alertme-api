@@ -11,7 +11,19 @@ EXPOSE 8000
 
 ARG DEV=false
 RUN \
-    apk add postgresql-libs && \
+    apk add --no-cache \
+    gdal-dev \
+    geos-dev \
+    gcc \
+    musl-dev \
+    proj-dev \
+    libffi-dev \
+    jpeg-dev \
+    zlib-dev \
+    bash \
+    && apk add --no-cache --virtual .build-deps \
+    build-base \
+    && apk add postgresql-libs && \
     apk add --virtual .build-deps gcc musl-dev postgresql-dev && \
     python -m venv /py && \
     /py/bin/pip install --upgrade pip && \
@@ -24,6 +36,9 @@ RUN \
         --disabled-password \
         --no-create-home \
         django-user
+
+
+RUN apk del .build-deps
 
 ENV PATH="/py/bin:$PATH"
 

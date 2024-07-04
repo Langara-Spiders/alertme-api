@@ -30,6 +30,19 @@ ALLOWED_HOSTS = ['*']
 CSRF_TRUSTED_ORIGINS = ['https://alertme.tech', 'https://www.alertme.tech']
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
+LANGUAGES = [
+    ('en', 'English (Canada)'),
+    ('fr', 'Français (Canada)'),
+]
+
+LOCALE_PATHS = [
+    BASE_DIR / 'locale',
+]
+
+LANGUAGE_CODE = 'en'
+
+# USE_I18N = True
+# USE_L10N = True
 
 # Application definition
 
@@ -40,9 +53,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.gis',
+    'channels',
     'storages',
     'core',
-    'incident'
+    'incident',
+    'notification'
 ]
 
 MIDDLEWARE = [
@@ -50,7 +66,8 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'core.jwt_authentication.JWTAuthenticationMiddleware',
+    'core.jwt_middleware.JWTMiddleware',
+    'core.lang_middleware.LangMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -73,21 +90,33 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'app.wsgi.application'
-
+# WSGI_APPLICATION = 'app.wsgi.application'
+ASGI_APPLICATION = 'app.asgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
         'NAME': os.environ.get('PG_DB_NAME'),
         'USER': os.environ.get('PG_DB_USER'),
         'PASSWORD': os.environ.get('PG_DB_PASSWORD'),
         'HOST': os.environ.get('PG_DB_HOST'),
         'PORT': os.environ.get('PG_DB_PORT'),
     }
+}
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [(
+                os.environ.get('RDS_DB_HOST'),
+                int(os.environ.get('RDS_DB_PORT'))
+            )],
+        },
+    },
 }
 
 
@@ -113,11 +142,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
-USE_I18N = True
 
 USE_TZ = True
 

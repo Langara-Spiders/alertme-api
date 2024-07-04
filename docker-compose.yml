@@ -6,8 +6,8 @@ services:
       context: .
       args:
         - DEV=true
-    image: alertme-api
-    container_name: alertme-api-container
+    image: alertme-api-wsgi
+    container_name: alertme-api
     ports:
       - "8000:8000"
     volumes:
@@ -16,7 +16,7 @@ services:
       - .env
     command: >
       sh -c "python manage.py migrate &&
-             python manage.py runserver 0.0.0.0:8000"
+             daphne -b 0.0.0.0 -p 8000 app.asgi:application"
 
   nginx:
     image: nginx:latest

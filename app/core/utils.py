@@ -7,55 +7,90 @@ from datetime import (
     timezone
 )
 from http import HTTPStatus
-from .messages import MESSAGES
-import boto3
-from botocore.exceptions import ClientError
-import uuid
-from math import radians, cos, sin, asin, sqrt
-
-# AWS S3 Configurations
-AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
-AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME')
-
-s3_client = boto3.client(
-    's3',
-    aws_access_key_id=AWS_ACCESS_KEY_ID,
-    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-    region_name=AWS_S3_REGION_NAME
+from .messages import Messages
+from .models import NotificationList
+from django.contrib.auth import (
+    get_user_model
 )
+from django.contrib.gis.measure import D
+from django.contrib.gis.db.models.functions import Distance
 
 
-def upload_file_to_s3(file_obj):
-    try:
-        # Generate unique filename for S3
-        file_name = f'{uuid.uuid4()}'
+# Helper to create single notification
+def create_notification(user, reported_user, incident, title):
+    notification = NotificationList.objects.create(
+        type='SINGLE',
+        user=user,
+        incident=incident,
+        coordinates=incident.coordinates,
+        title=title,
+        subject=incident.subject,
+        description=incident.description,
+    )
 
-        # Upload file to S3 bucket
-        s3_client.upload_fileobj(
-            file_obj,
-            AWS_STORAGE_BUCKET_NAME,
-            file_name
-        )
+    reported_user.notification.update({
+        str(notification._id): {
+            'incident_id': str(incident._id),
+            'title': title,
+            'subject': incident.subject,
+            'description': incident.description,
+            'read_flag': False
+        }
+    })
 
-        # Return the URL of the uploaded file
-        file_url = (
-            f'https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.'
-            f'amazonaws.com/{file_name}'
-        )
-
-        return file_url
-
-    except ClientError as e:
-        raise e
+    reported_user.save()
 
 
+# Helper to create 1 to many notification
+def create_notification_stream(user, incident, title):
+    # Create a notification
+    notification = NotificationList.objects.create(
+        type='BROADCAST',
+        user=user,
+        incident=incident,
+        coordinates=incident.coordinates,
+        title=title,
+        subject=incident.subject,
+        description=incident.description,
+    )
+
+    # Find nearby users to the incident within 5Km range
+    nearby_users_qs = get_user_model().objects.filter(
+        coordinates__distance_lte=(user.roaming_coordinates, D(km=5))
+    ).annotate(
+        distance=Distance('coordinates', user.roaming_coordinates)
+    ).order_by('distance')
+
+    # For each nearby user within 5Km range
+    for nearby_user in nearby_users_qs:
+        user_to_incident_distance = user.roaming_coordinates\
+            .distance(incident.coordinates)
+        # Do not notify the user who reported the incident and
+        # Notify only user within the alert radius
+        # that they set if incident comes within that radius
+        within_alert_radius = \
+            nearby_user.alert_radius >= user_to_incident_distance
+
+        if user._id != nearby_user._id and within_alert_radius:
+            nearby_user.notification.update({
+                str(notification._id): {
+                    'incident_id': str(incident._id),
+                    'title': title,
+                    'subject': incident.subject,
+                    'description': incident.description,
+                    'read_flag': False
+                }
+            })
+
+            nearby_user.save()
+
+
+# Helper to generate JWT token
 def generate_jwt_token(**kwargs):
     payload = {
         **kwargs,
         'exp': datetime.now(timezone.utc) +
-        timedelta(days=int(os.environ.get('JWT_EXP_TIME'))),
+        timedelta(days=int(os.environ.get('JWT_EXP_TIME', 1))),
         'iat': datetime.now(timezone.utc),
     }
     return jwt.encode(
@@ -65,7 +100,8 @@ def generate_jwt_token(**kwargs):
     )
 
 
-def decode_jwt_token(token, lng):
+# Helper to decode JWT token
+def decode_jwt_token(token):
     try:
         payload = jwt.decode(
             token,
@@ -74,7 +110,7 @@ def decode_jwt_token(token, lng):
         )
 
         return {
-            'message': MESSAGES[lng].get('SUCCESS_MESSAGE_LOGIN'),
+            'message': Messages.JWT_SUCCESS,
             'data': payload,
             'error': False,
             'status': HTTPStatus.OK
@@ -82,7 +118,7 @@ def decode_jwt_token(token, lng):
 
     except jwt.ExpiredSignatureError:
         return {
-            'message': MESSAGES[lng].get('ERROR_MESSAGE_JWT_EXP'),
+            'message': Messages.JWT_EXPIRED_TOKEN,
             'data': None,
             'error': True,
             'status': HTTPStatus.UNAUTHORIZED
@@ -90,37 +126,26 @@ def decode_jwt_token(token, lng):
 
     except jwt.InvalidTokenError:
         return {
-            'message': MESSAGES[lng].get('ERROR_MESSAGE_INVALID_JWT'),
+            'message': Messages.JWT_INAVLID_TOKEN,
             'data': None,
             'error': True,
             'status': HTTPStatus.UNAUTHORIZED
         }
 
 
-def haversine(lon1, lat1, lon2, lat2):
-    """
-    Calculate the great-circle distance in kilometers between two points
-    on the earth (specified in decimal degrees).
-    """
-    # convert decimal degrees to radians
-    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
-
-    # haversine formula
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
-    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
-    c = 2 * asin(sqrt(a))
-    r = 6371  # radius of earth in kilometers
-
-    return c * r
-
-
-def format_incident_data(incident, distance=None):
-
+# Helper to format incident object to JSON
+def format_incident_data(incident, current_user_info=None):
     images_db_list = incident.images.all()
     voters_db_list = incident.voters.all()[:3]
 
+    current_user_has_voted = False
+    # Check if current user is in the voters list
+    if current_user_info:
+        current_user_has_voted = incident.voters\
+                .filter(_id=current_user_info.get('_id')).exists()
+
     user = incident.user
+    project = incident.project
     images = []
     voters = []
 
@@ -136,6 +161,8 @@ def format_incident_data(incident, distance=None):
 
     incident = {
         'id': str(incident._id),
+        'project_id': str(project._id) if project else '',
+        'project_name': str(project.name) if project else '',
         'user_id': str(user._id),
         'user_name': str(user.name),
         'user_picture': user.picture.url if user.picture else '',
@@ -145,10 +172,13 @@ def format_incident_data(incident, distance=None):
         if incident.incident_category.icon else '',
         'subject': incident.subject,
         'description': incident.description,
-        'coordinate': incident.coordinate,
+        'coordinates': {
+            'lat': incident.coordinates.y,
+            'lng': incident.coordinates.x,
+        },
         'address': incident.address,
-        'distance': distance,
         'upvote_count': incident.upvote_count,
+        'current_user_has_voted': current_user_has_voted,
         'report_count': incident.report_count,
         'status': incident.status,
         'is_accepted_by_org': incident.is_accepted_by_org,
