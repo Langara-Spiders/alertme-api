@@ -386,7 +386,7 @@ class IncidentUserView(View):
 
 
 class IncidentSiteView(View):
-    def get(self, request):
+    def get(self, request, reported_by):
         lng = request.lng
         user_info = request.user_info
 
@@ -397,8 +397,9 @@ class IncidentSiteView(View):
 
             incidents = Incident.objects\
                 .filter(
+                    is_active=True,
                     project___id=project._id,
-                    is_active=True
+                    reported_by=str(reported_by).upper()
                 )
 
             if filter_by is not None:
