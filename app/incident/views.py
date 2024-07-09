@@ -247,7 +247,8 @@ class IncidentReportView(View):
                 description=description,
                 coordinate=coordinate,
                 address=address,
-                is_internal_for_org=is_internal_for_org
+                reported_by='ORG' if user_info.get('is_staff') else 'USER',
+                is_internal_for_org=is_internal_for_org,
             )
 
             # loop over images if present
@@ -403,7 +404,10 @@ class IncidentSiteView(View):
                 )
 
             if filter_by is not None:
-                incidents = incidents.filter(status=filter_by)
+                if filter_by == 'INTERNAL':
+                    incidents = incidents.filter(is_internal_for_org=True)
+                else:
+                    incidents = incidents.filter(status=filter_by)
 
             project_lat = float(project.coordinate.get('lat'))
             project_lng = float(project.coordinate.get('lng'))
