@@ -71,7 +71,6 @@ class Project(models.Model):
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
-        coords = self.coordinates
         return f'id: {self._id} | name: {self.name}'
 
     class Meta:

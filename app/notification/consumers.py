@@ -21,16 +21,10 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         # Imports
         from core.models import NotificationList
 
-        roaming_coordinates = Point(
-            self.coordinates.get('lng'),
-            self.coordinates.get('lat'),
-            srid=4326
-        )
-
         recent_notifications_qs = NotificationList.objects.filter(
-            coordinates__distance_lte=(roaming_coordinates, D(km=5))
+            coordinates__distance_lte=(self.coordinates, D(km=5))
         ).annotate(
-            distance=Distance('coordinates', roaming_coordinates)
+            distance=Distance('coordinates', self.coordinates)
         ).filter(
             created_at__gt=timezone.now(),
             type='BROADCAST',
@@ -49,6 +43,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
                 }
             })
 
+        self.user.roaming_coordinates = self.coordinates
         self.user.save()
 
     async def connect(self):
@@ -81,8 +76,12 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         from core.utils import Messages
 
         coordinates = json.loads(text_data)
-        self.coordinates = coordinates
-        self.user.roaming_coordinates = coordinates
+
+        self.coordinates = Point(
+            coordinates.get('lng'),
+            coordinates.get('lat'),
+            srid=4326
+        )
 
         thread = threading.Thread(target=self.get_latest_notification)
         thread.start()
