@@ -500,7 +500,6 @@ class IncidentSiteView(View):
                     is_active=True,
                     project___id=project._id,
                     reported_by=reported_by,
-                    is_active=True,
                 )
 
             ALL_OPTIONS = [*ALL_INCIDENT_STATUS, 'INTERNAL']
