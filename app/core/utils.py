@@ -54,11 +54,11 @@ def create_notification_stream(user, incident, title):
         description=incident.description,
     )
 
-    # Find nearby users to the incident within 5Km range
+    # Find nearby users to the incident within 50Km range for testing, reduce to 5Km
     nearby_users_qs = get_user_model().objects.filter(
-        coordinates__distance_lte=(user.roaming_coordinates, D(km=5))
+        roaming_coordinates__distance_lte=(incident.coordinates, D(km=50))
     ).annotate(
-        distance=Distance('coordinates', user.roaming_coordinates)
+        distance=Distance('coordinates', incident.coordinates)
     ).order_by('distance')
 
     # For each nearby user within 5Km range
@@ -69,7 +69,6 @@ def create_notification_stream(user, incident, title):
         # Notify only user within the alert radius
         # that they set if incident comes within that radius
         if user._id != nearby_user._id and nearby_user.alert_radius >= user_to_incident_distance:
-            print(nearby_user)
             nearby_user.notification.update({
                 str(notification._id): {
                     'incident_id': str(incident._id),
