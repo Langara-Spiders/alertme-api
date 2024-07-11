@@ -68,10 +68,8 @@ def create_notification_stream(user, incident, title):
         # Do not notify the user who reported the incident and
         # Notify only user within the alert radius
         # that they set if incident comes within that radius
-        within_alert_radius = \
-            nearby_user.alert_radius >= user_to_incident_distance
-
-        if user._id != nearby_user._id and within_alert_radius:
+        if user._id != nearby_user._id and nearby_user.alert_radius >= user_to_incident_distance:
+            print(nearby_user)
             nearby_user.notification.update({
                 str(notification._id): {
                     'incident_id': str(incident._id),
