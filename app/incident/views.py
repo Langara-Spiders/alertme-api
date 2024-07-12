@@ -326,7 +326,7 @@ class IncidentReportView(View):
 
             # Find the nearby project within 100 meter radius
             nearby_project = Project.objects.filter(
-                coordinates__distance_lte=(incident_point, D(m=100))
+                coordinates__distance_lte=(incident_point, D(km=1000000))
             ).annotate(
                 distance=Distance('coordinates', incident_point)
             ).order_by('distance').first()
