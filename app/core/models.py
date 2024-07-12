@@ -47,8 +47,8 @@ class Organization(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
 
-    def __str__(self):
-        return f'id: {self._id} | name: {self.name}'
+    # def __str__(self):
+    #     return f'id: {self._id} | name: {self.name}'
 
     class Meta:
         ordering = ["-name"]
@@ -70,8 +70,8 @@ class Project(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
 
-    def __str__(self):
-        return f'id: {self._id} | name: {self.name}'
+    # def __str__(self):
+    #     return f'id: {self._id} | name: {self.name}'
 
     class Meta:
         ordering = ["-name"]
@@ -136,12 +136,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     def get_project_id(self):
         return self.project._id if self.project else ''
 
-    def __str__(self):
-        coords = self.roaming_coordinates
-        return f'id: {self._id} | name: {self.name} \
-            | email: {self.email} \
-            {"| ORG" if self.is_staff else ""} \
-            | coords: {coords.y}, {coords.x}'
+    # def __str__(self):
+    #     coords = self.roaming_coordinates
+    #     return f'id: {self._id} | name: {self.name} \
+    #         | email: {self.email} \
+    #         {"| ORG" if self.is_staff else ""} \
+    #         | coords: {coords.y}, {coords.x}'
 
     class Meta:
         ordering = ["-name"]
@@ -161,8 +161,8 @@ class IncidentCategory(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return f'id: {self._id} | name: {self.name}'
+    # def __str__(self):
+    #     return f'id: {self._id} | name: {self.name}'
 
     class Meta:
         ordering = ["created_at"]
@@ -249,10 +249,10 @@ class NotificationList(models.Model):
     description = models.CharField(max_length=200)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        coords = self.coordinates
-        return f'id: {self._id} | subject: {self.subject} \
-            | coords: {coords.y}, {coords.x}'
+    # def __str__(self):
+    #     coords = self.coordinates
+    #     return f'id: {self._id} | subject: {self.subject} \
+    #         | coords: {coords.y}, {coords.x}'
 
     class Meta:
         ordering = ["-created_at"]
