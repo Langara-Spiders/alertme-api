@@ -247,7 +247,7 @@ class ProfileView(View):
             if picture:
                 user.picture.save(f"{uuid.uuid4()}_{picture.name}", picture, save=True)
 
-             user.save()
+            user.save()
 
             # If profile picture has to be updated
             if picture:
