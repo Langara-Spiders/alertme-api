@@ -352,7 +352,6 @@ class IncidentReportView(View):
             # Set the images to incident if present
             if images:
                 incident.images.set(images)
-                incident.save()
 
             # Create notification for nearby users
             threading.Thread(
