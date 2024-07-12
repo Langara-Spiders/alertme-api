@@ -57,7 +57,7 @@ def create_notification_stream(user, incident, title):
 
     # Find nearby users to the incident within 50Km range for testing, reduce to 5Km
     nearby_users_qs = get_user_model().objects.filter(
-        roaming_coordinates__distance_lte=(incident.coordinates, D(km=50))
+        roaming_coordinates__distance_lte=(incident.coordinates, D(km=500000))
     ).annotate(
         distance=Distance('coordinates', incident.coordinates)
     ).order_by('distance')

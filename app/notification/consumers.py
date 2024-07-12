@@ -27,7 +27,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         self.user.save()
 
         recent_notifications_qs = NotificationList.objects.filter(
-            coordinates__distance_lte=(self.coordinates, D(km=5))
+            coordinates__distance_lte=(self.coordinates, D(km=50000))
         ).annotate(
             distance=Distance('coordinates', self.coordinates)
         ).filter(
