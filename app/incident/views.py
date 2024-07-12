@@ -654,7 +654,7 @@ class IncidentSiteView(View):
             elif status == 'RESOLVED':
                 # Incident doesnot belong
                 # to the current org to resolve
-                if incident.project___id != project._id:
+                if incident.project._id != project._id:
                     return JsonResponse({
                         'message': Messages.ERROR_UNAUTHORIZED_RESOLVE,
                         'data': None,
@@ -680,7 +680,7 @@ class IncidentSiteView(View):
             elif status == 'REJECTED':
                 # Incident doesnot belong
                 # to the current org to reject it
-                if incident.project___id != project._id:
+                if incident.project._id != project._id:
                     return JsonResponse({
                         'message': Messages.ERROR_UNAUTHORIZED_REJECT,
                         'data': None,
