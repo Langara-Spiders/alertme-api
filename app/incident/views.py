@@ -517,7 +517,7 @@ class IncidentSiteView(View):
             # Based on filter, filter-out the incident objects
             if filter_by == 'INTERNAL':
                 incidents = incidents.filter(is_internal_for_org=True)
-            else:
+            elif filter_by:
                 incidents = incidents.filter(status=filter_by)
 
             # Format to JSON and create array of site incidents
