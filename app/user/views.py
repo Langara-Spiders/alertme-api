@@ -232,7 +232,8 @@ class ProfileView(View):
             # Get user info
             user_info = request.user_info
 
-            user = get_user_model().objects.get(_id=user_info.get('_id'))
+            user = get_user_model().
+            objects.get(_id=user_info.get('_id'))
 
             user.name = data.get('name')
             user.phone = data.get('phone')
@@ -245,7 +246,8 @@ class ProfileView(View):
 
             # If profile picture has to be updated
             if picture:
-                user.picture.save(f"{uuid.uuid4()}_{picture.name}", picture, save=True)
+                user.picture.
+                save(f"{uuid.uuid4()}_{picture.name}", picture, save=True)
 
             user.save()
 
