@@ -28,6 +28,8 @@ from django.contrib.gis.measure import D
 
 
 ALL_INCIDENT_STATUS = [s[0] for s in INCIDENT_STATUS_CHOICES]
+INCIDENT_POINT_UPVOTE = 10
+INCIDENT_POINT_ACCEPT = 50
 
 
 # Get all Issue categories
@@ -113,6 +115,9 @@ class IncidentUpvoteView(View):
             if incident.upvote_count == 3:
                 # Change status to pending
                 incident.status = 'PENDING'
+                # Update reported user points
+                reported_user.points += INCIDENT_POINT_UPVOTE
+                reported_user.save()
                 # Generate a notification to reported user
                 threading.Thread(
                     target=create_notification,
@@ -612,6 +617,13 @@ class IncidentSiteView(View):
             if status == 'FIXING':
                 incident.is_accepted_by_org = True
                 incident.project = user.project
+
+                # Get the incident reported user
+                reported_user = incident.user
+
+                # Update reported user points
+                reported_user.points += INCIDENT_POINT_ACCEPT
+                reported_user.save()
 
                 # Generate a notification to reported user
                 threading.Thread(

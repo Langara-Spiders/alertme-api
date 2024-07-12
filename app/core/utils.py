@@ -34,6 +34,7 @@ def create_notification(user, reported_user, incident, title):
             'title': title,
             'subject': incident.subject,
             'description': incident.description,
+            'created_at': notification.created_at,
             'read_flag': False
         }
     })
@@ -75,6 +76,7 @@ def create_notification_stream(user, incident, title):
                     'title': title,
                     'subject': incident.subject,
                     'description': incident.description,
+                    'created_at': notification.created_at,
                     'read_flag': False
                 }
             })

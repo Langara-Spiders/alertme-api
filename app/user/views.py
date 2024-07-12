@@ -22,9 +22,6 @@ from core.models import (
 from core.utils import generate_jwt_token
 from core.messages import Messages
 
-
-CONFIRMED_REPORTS_PER_LEVEL = 25
-
 client_id = {
     'web': 'GOOGLE_CLIENT_ID',
     'ios': 'GOOGLE_IOS_CLIENT_ID',
@@ -322,19 +319,16 @@ class RewardView(View):
 
             user_incidents_count = Incident.objects\
                 .filter(user___id=user_info.get('_id'), is_active=True)\
-                .exclude(status__in=['ACTIVE', 'REJECTED']).count()
+                .count()
 
             user = get_user_model().objects\
                 .filter(_id=user_info.get('_id'), is_active=True).first()
-
-            user_level = (user.points // CONFIRMED_REPORTS_PER_LEVEL) + 1
 
             user_details = {
                 'id': user._id,
                 'name': user.name,
                 'points': user.points,
-                'level': user_level,
-                'confirmed_issues': user_incidents_count,
+                'total_issues': user_incidents_count,
             }
 
             # Leaderboard
