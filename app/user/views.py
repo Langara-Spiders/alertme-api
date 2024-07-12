@@ -345,7 +345,7 @@ class RewardView(View):
                     expression=Rank(),
                     order_by=F('points').desc()
                 )
-            ).filter(points__gt=user_rank.points).order_by('-points')[:3]
+            ).filter(points__gt=user_rank.points).order_by('-points')[:2]
 
             below_users = get_user_model().objects.annotate(
                 rank=Window(
