@@ -327,6 +327,7 @@ class RewardView(View):
             user_details = {
                 'id': user._id,
                 'name': user.name,
+                'picture': user.picture.url if user.picture else '',
                 'points': user.points,
                 'total_issues': user_incidents_count,
             }
