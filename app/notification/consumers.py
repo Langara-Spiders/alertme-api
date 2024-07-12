@@ -21,12 +21,16 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         # Imports
         from core.models import NotificationList
 
+        print(self.coordinates)
+
+        self.user.roaming_coordinates = self.coordinates
+        self.user.save()
+
         recent_notifications_qs = NotificationList.objects.filter(
             coordinates__distance_lte=(self.coordinates, D(km=5))
         ).annotate(
             distance=Distance('coordinates', self.coordinates)
         ).filter(
-            created_at__gt=timezone.now(),
             type='BROADCAST',
         ).exclude(
             user___id=self.user_id
@@ -43,8 +47,6 @@ class NotificationConsumer(AsyncWebsocketConsumer):
                 }
             })
 
-        self.user.roaming_coordinates = self.coordinates
-        self.user.save()
 
     async def connect(self):
         # Get user_id from query params
