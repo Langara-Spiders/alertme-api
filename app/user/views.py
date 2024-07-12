@@ -232,21 +232,22 @@ class ProfileView(View):
             # Get user info
             user_info = request.user_info
 
-            user = get_user_model().objects\
-                .filter(_id=user_info.get('_id'))
+            user = get_user_model().objects.get(_id=user_info.get('_id'))
 
-            user.update(
-                name=data.get('name'),
-                phone=data.get('phone'),
-                address=data.get('address'),
-                coordinates=Point(
-                    data.get('coordinates').get('lng'),
-                    data.get('coordinates').get('lat'),
-                    srid=4326,
-                ),
+            user.name = data.get('name')
+            user.phone = data.get('phone')
+            user.address = data.get('address')
+            user.coordinates = Point(
+                data.get('coordinates').get('lng'),
+                data.get('coordinates').get('lat'),
+                srid=4326,
             )
 
-            user = user.first()
+            # If profile picture has to be updated
+            if picture:
+                user.picture.save(f"{uuid.uuid4()}_{picture.name}", picture, save=True)
+
+             user.save()
 
             # If profile picture has to be updated
             if picture:
