@@ -58,7 +58,6 @@ INSTALLED_APPS = [
     'storages',
     'core',
     'incident',
-    'notification'
 ]
 
 MIDDLEWARE = [

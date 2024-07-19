@@ -20,7 +20,6 @@ from core.messages import (
 from core.utils import (
     format_incident_data,
     create_notification,
-    create_notification_stream,
 )
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point
@@ -122,8 +121,8 @@ class IncidentUpvoteView(View):
                 threading.Thread(
                     target=create_notification,
                     args=(
+                        'SINGLE',
                         user,
-                        reported_user,
                         incident,
                         NotificationMessages
                         .UPVOTE_THRESHOLD_REPORT
@@ -136,8 +135,8 @@ class IncidentUpvoteView(View):
                 threading.Thread(
                     target=create_notification,
                     args=(
+                        'SINGLE',
                         user,
-                        reported_user,
                         incident,
                         NotificationMessages
                         .USER_UPVOTED_REPORT.format(user.name)
@@ -355,8 +354,9 @@ class IncidentReportView(View):
 
             # Create notification for nearby users
             threading.Thread(
-                target=create_notification_stream,
+                target=create_notification,
                 args=(
+                    'BROADCAST',
                     user,
                     incident,
                     NotificationMessages
@@ -629,8 +629,8 @@ class IncidentSiteView(View):
                 threading.Thread(
                     target=create_notification,
                     args=(
+                        'SINGLE',
                         user,
-                        reported_user,
                         incident,
                         NotificationMessages
                         .ORG_ACCEPTED_REPORT
@@ -640,8 +640,9 @@ class IncidentSiteView(View):
 
                 # Create notification for nearby users
                 threading.Thread(
-                    target=create_notification_stream,
+                    target=create_notification,
                     args=(
+                        'BROADCAST',
                         user,
                         incident,
                         NotificationMessages
@@ -666,8 +667,8 @@ class IncidentSiteView(View):
                 threading.Thread(
                     target=create_notification,
                     args=(
+                        'SINGLE',
                         user,
-                        reported_user,
                         incident,
                         NotificationMessages
                         .ORG_RESOLVED_REPORT
@@ -692,8 +693,8 @@ class IncidentSiteView(View):
                 threading.Thread(
                     target=create_notification,
                     args=(
+                        'SINGLE',
                         user,
-                        reported_user,
                         incident,
                         NotificationMessages
                         .ORG_REJECTED_REPORT

@@ -11,6 +11,11 @@ from django.contrib.auth.models import (
     BaseUserManager,
     PermissionsMixin,
 )
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+
 
 NOTIFICATION_TYPE_CHOICES = [
     ('BROADCAST', 'Broadcast'),
@@ -259,3 +264,32 @@ class NotificationList(models.Model):
         db_table = "notifications_list"
         verbose_name = "Notification List"
         verbose_name_plural = "Notifications List"
+
+
+@receiver(post_save, sender=NotificationList)
+def trigger_notification(sender, instance, created, **kwargs):
+    if created:
+        channel_layer = get_channel_layer()
+        if instance.type == 'BROADCAST':
+            group_name = 'broadcast_notification'
+        else:
+            group_name = f"user_{instance.user._id}"
+
+        async_to_sync(channel_layer.group_send)(
+            group_name,
+            {
+                'type': 'send_notification',
+                'notification': {
+                    'id': str(instance._id),
+                    'type': instance.type,
+                    'incident_id': str(instance.incident._id),
+                    'user_id': str(instance.user._id),
+                    'title': instance.title,
+                    'subject': instance.incident.subject,
+                    'description': instance.incident.description,
+                    'lat': instance.coordinates.x,
+                    'lng': instance.coordinates.y,
+                    'created_at': str(instance.created_at)
+                }
+            }
+        )

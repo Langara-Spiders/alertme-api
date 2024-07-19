@@ -17,9 +17,9 @@ from django.contrib.gis.db.models.functions import Distance
 
 
 # Helper to create single notification
-def create_notification(user, reported_user, incident, title):
-    notification = NotificationList.objects.create(
-        type='SINGLE',
+def create_notification(type, user, incident, title):
+    NotificationList.objects.create(
+        type=type,
         user=user,
         incident=incident,
         coordinates=incident.coordinates,
@@ -27,62 +27,6 @@ def create_notification(user, reported_user, incident, title):
         subject=incident.subject,
         description=incident.description,
     )
-
-    reported_user.notification.update({
-        str(notification._id): {
-            'incident_id': str(incident._id),
-            'title': title,
-            'subject': incident.subject,
-            'description': incident.description,
-            'created_at': notification.created_at,
-            'read_flag': False
-        }
-    })
-
-    reported_user.save()
-
-
-# Helper to create 1 to many notification
-def create_notification_stream(user, incident, title):
-    # Create a notification
-    notification = NotificationList.objects.create(
-        type='BROADCAST',
-        user=user,
-        incident=incident,
-        coordinates=incident.coordinates,
-        title=title,
-        subject=incident.subject,
-        description=incident.description,
-    )
-
-    # Find nearby users to the incident within 50Km range for testing, reduce to 5Km
-    nearby_users_qs = get_user_model().objects.filter(
-        roaming_coordinates__distance_lte=(incident.coordinates, D(km=500000))
-    ).annotate(
-        distance=Distance('coordinates', incident.coordinates)
-    ).order_by('distance')
-
-    # For each nearby user within 5Km range
-    for nearby_user in nearby_users_qs:
-        user_to_incident_distance = user.roaming_coordinates\
-            .distance(incident.coordinates)
-        # Do not notify the user who reported the incident and
-        # Notify only user within the alert radius
-        # that they set if incident comes within that radius
-        if user._id != nearby_user._id and nearby_user.alert_radius >= user_to_incident_distance:
-            nearby_user.notification.update({
-                str(notification._id): {
-                    'incident_id': str(incident._id),
-                    'title': title,
-                    'subject': incident.subject,
-                    'description': incident.description,
-                    'created_at': notification.created_at,
-                    'read_flag': False
-                }
-            })
-
-            nearby_user.save()
-
 
 # Helper to generate JWT token
 def generate_jwt_token(**kwargs):

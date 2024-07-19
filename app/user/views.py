@@ -199,8 +199,8 @@ class ProfileView(View):
                 'project_id': user.get_project_id(),
                 'address': user.address,
                 'coordinates': {
-                    'latitude': user.coordinates.y,
-                    'longitude': user.coordinates.x,
+                    'lat': user.coordinates.y,
+                    'lng': user.coordinates.x,
                 },
             }
 
@@ -305,7 +305,8 @@ class RewardView(View):
         try:
             # Get top three users based on points
             top_users_qs = get_user_model().objects\
-                .order_by('-points', 'name')[:3]
+                .order_by('-points', 'name')\
+                .filter(is_staff=False)[:3]
             user_info = request.user_info
 
             top_users = []
@@ -345,14 +346,20 @@ class RewardView(View):
                     expression=Rank(),
                     order_by=F('points').desc()
                 )
-            ).filter(points__gt=user_rank.points).order_by('-points')[:2]
+            ).filter(
+                points__gt=user_rank.points,
+                is_staff=False,
+            ).order_by('-points')[:2]
 
             below_users = get_user_model().objects.annotate(
                 rank=Window(
                     expression=Rank(),
                     order_by=F('points').desc()
                 )
-            ).filter(points__lt=user_rank.points).order_by('-points')[:20]
+            ).filter(
+                points__lt=user_rank.points,
+                is_staff=False,
+            ).order_by('-points')[:20]
 
             combined_users = list(chain(above_users, [user_rank], below_users))
 
