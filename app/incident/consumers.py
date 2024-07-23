@@ -40,17 +40,6 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         self.user.roaming_coordinates = self.coordinates
         self.user.save()
 
-        # recent_notifications_qs = NotificationList.objects.filter(
-        #     coordinates__distance_lte=(self.coordinates, D(km=50000))
-        # ).annotate(
-        #     distance=Distance('coordinates', self.coordinates)
-        # ).filter(
-        #     type='BROADCAST',
-        # ).exclude(
-        #     user___id=self.user._id
-        # ).order_by('distance')
-
-
     async def connect(self):
         thread = threading.Thread(target=self.get_user)
         thread.start()
@@ -107,8 +96,8 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         notification = event['notification']
         check_single = notification.get('type') == 'SINGLE'
         check_broadcast = notification.get('type') == 'BROADCAST'
-        check_current_user = notification.get('user_id') == self.user._id
-        check_not_current_user = notification.get('user_id') != self.user._id
+        check_current_user = notification.get('user_id') == str(self.user._id)
+        check_not_current_user = notification.get('user_id') != str(self.user._id)
 
         # Broadcast notification
         if check_broadcast and check_not_current_user:

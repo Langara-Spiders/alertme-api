@@ -122,7 +122,7 @@ class IncidentUpvoteView(View):
                     target=create_notification,
                     args=(
                         'SINGLE',
-                        user,
+                        reported_user,
                         incident,
                         NotificationMessages
                         .UPVOTE_THRESHOLD_REPORT
@@ -631,7 +631,7 @@ class IncidentSiteView(View):
                     target=create_notification,
                     args=(
                         'SINGLE',
-                        user,
+                        reported_user,
                         incident,
                         NotificationMessages
                         .ORG_ACCEPTED_REPORT
@@ -669,7 +669,7 @@ class IncidentSiteView(View):
                     target=create_notification,
                     args=(
                         'SINGLE',
-                        user,
+                        reported_user,
                         incident,
                         NotificationMessages
                         .ORG_RESOLVED_REPORT
@@ -695,7 +695,7 @@ class IncidentSiteView(View):
                     target=create_notification,
                     args=(
                         'SINGLE',
-                        user,
+                        reported_user,
                         incident,
                         NotificationMessages
                         .ORG_REJECTED_REPORT
