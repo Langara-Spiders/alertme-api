@@ -50,11 +50,11 @@ class NotificationConsumer(AsyncWebsocketConsumer):
             return
 
         self.group_broadcast_name = 'broadcast_notification'
-        self.group_name = f'user_{self.user._id}'
+        self.group_single_name = f'user_{self.user._id}'
 
         # Register channel for single notifications
         await self.channel_layer.group_add(
-            self.group_name,
+            self.group_single_name,
             self.channel_name
         )
 
@@ -70,7 +70,7 @@ class NotificationConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         if self.user:
             await self.channel_layer.group_discard(
-                self.group_name,
+                self.group_single_name,
                 self.channel_name
             )
 
@@ -99,8 +99,14 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         check_current_user = notification.get('user_id') == str(self.user._id)
         check_not_current_user = notification.get('user_id') != str(self.user._id)
 
+        # Single notification
+        if check_single and check_current_user:
+            await self.send(text_data=json.dumps({
+                'notification': notification
+            }))
+
         # Broadcast notification
-        if check_broadcast and check_not_current_user:
+        elif check_broadcast and check_not_current_user:
             from django.contrib.gis.geos import Point
             from django.contrib.gis.measure import Distance
 
@@ -119,9 +125,3 @@ class NotificationConsumer(AsyncWebsocketConsumer):
                 await self.send(text_data=json.dumps({
                     'notification': notification
                 }))
-
-        # Single notification
-        if check_single and check_current_user:
-            await self.send(text_data=json.dumps({
-                'notification': notification
-            }))

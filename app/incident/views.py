@@ -136,7 +136,7 @@ class IncidentUpvoteView(View):
                     target=create_notification,
                     args=(
                         'SINGLE',
-                        user,
+                        reported_user,
                         incident,
                         NotificationMessages
                         .USER_UPVOTED_REPORT.format(user.name)

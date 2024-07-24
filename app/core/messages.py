@@ -42,7 +42,7 @@ class NotificationMessages:
     NEARBY_REPORT = _('A issue was reported nearby you')
     NEARBY_REPORT_CONFIRMED = _('A issue was confirmed nearby you')
     USER_UPVOTED_REPORT = _('{0} upvoted your report')
-    UPVOTE_THRESHOLD_REPORT = _('Your report is now pending')
+    UPVOTE_THRESHOLD_REPORT = _('Your report is now pending action')
     ORG_RESOLVED_REPORT = _('{0} has resolved your report')
     ORG_REJECTED_REPORT = _('{0} has rejected your report')
     ORG_ACCEPTED_REPORT = _('{0} has accepted your report')
