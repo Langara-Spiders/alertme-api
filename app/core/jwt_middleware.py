@@ -18,7 +18,7 @@ class JWTMiddleware:
             auth_header = request.headers.get('Authorization', '')
 
             # URL patterns that should skip authentication
-            excluded_paths = ['/api/users/login', '/api/users/signup']
+            excluded_paths = ['/v1/users/login', '/v1/users/signup']
 
             # URL patterns for admin dashboard
             path_info = request.path_info
