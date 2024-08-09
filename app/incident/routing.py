@@ -4,5 +4,5 @@ from .consumers import NotificationConsumer
 app_name = 'notification'
 
 websocket_urlpatterns = [
-    path('api/notifications', NotificationConsumer.as_asgi()),
+    path('v1/updates', NotificationConsumer.as_asgi()),
 ]
